@@ -1,0 +1,7 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+config/symbol_tokens.csv
+data/*
+!data/.gitkeep
