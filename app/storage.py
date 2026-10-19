@@ -45,7 +45,15 @@ def append_csv(path, fields, record):
 
 
 def save_trade(trade):
+    """Append each closed virtual trade once, even after an interrupted workflow run."""
+    trade_id = str(trade.get("trade_id", "")).strip()
+    if trade_id and TRADE_FILE.exists():
+        with TRADE_FILE.open(newline="", encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f):
+                if row.get("trade_id") == trade_id:
+                    return False
     append_csv(TRADE_FILE, FIELDS, trade)
+    return True
 
 
 def log_event(level, event, detail=""):
