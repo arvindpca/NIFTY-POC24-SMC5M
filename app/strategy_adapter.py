@@ -41,7 +41,7 @@ def _latest_setup_signal(df, nifty_trend):
             if not np.isfinite(atr_j) or atr_j <= 0 or body < original.DISPLACEMENT_ATR * atr_j:
                 continue
             if side == "LONG":
-                mss = x.at[j, "last_swing_high"]
+                mss = x.at[j-1, "last_swing_high"]
                 if not np.isfinite(mss) or x.at[j, "close"] <= mss or x.at[j, "close"] <= x.at[j, "open"]:
                     continue
                 fvg = j >= 2 and x.at[j, "low"] > x.at[j-2, "high"]
@@ -58,7 +58,7 @@ def _latest_setup_signal(df, nifty_trend):
                           and row["low"] <= zh and row["high"] >= zl
                           and row["close"] > row["open"] and row["close"] > zh)
             else:
-                mss = x.at[j, "last_swing_low"]
+                mss = x.at[j-1, "last_swing_low"]
                 if not np.isfinite(mss) or x.at[j, "close"] >= mss or x.at[j, "close"] >= x.at[j, "open"]:
                     continue
                 fvg = j >= 2 and x.at[j, "high"] < x.at[j-2, "low"]
