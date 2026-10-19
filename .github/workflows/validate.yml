@@ -22,4 +22,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Check Python syntax
-        run: python -m compileall -q .
+        run: python -m compileall -q app tests strategy_b_original.py
+
+      - name: Test Final B entry and exit rules
+        run: python -m unittest discover -s tests -v
