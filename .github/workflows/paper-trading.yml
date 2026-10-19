@@ -1,14 +1,8 @@
 name: Strategy B Paper Trading
 
 on:
+  # Manual runs only until live-data, state persistence, and reports are validated.
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "data/**"
-  schedule:
-    # Run every 5 minutes; script enforces NSE market hours in IST.
-    - cron: "*/5 3-10 * * 1-5"
 
 permissions:
   contents: write
@@ -85,7 +79,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/paper_state.json data/trade_history.csv data/system_log.csv 2>/dev/null || true
+          git add data/paper_state.json data/trade_history.csv data/system_log.csv data/strategy_b_paper_history.xlsx 2>/dev/null || true
           if ! git diff --cached --quiet; then
             git commit -m "chore: persist Strategy B paper state"
             git push origin HEAD:main
