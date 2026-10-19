@@ -15,6 +15,7 @@ from app.notifications import send_telegram, entry_alert, close_alert
 from app.smartapi_client import create_data_client, fetch_5m_candles
 from app.storage import load_state, save_state, save_trade, log_event, DATA_DIR, FIELDS
 from app.strategy_adapter import get_latest_signal
+from app.rules import exit_decision, is_stale_entry, target_for
 import strategy_b_original as original
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -95,18 +96,11 @@ def close_positions(state, latest_by_symbol):
                 continue
             side = pos["side"]
             sl, target = float(pos["stop_loss"]), float(pos["target"])
-            if ts.time() >= original.FORCE_EXIT_TIME:
-                exit_px, reason = float(bar["close"]), "TIME_EXIT"
-            else:
-                stop_hit = float(bar["low"]) <= sl if side == "LONG" else float(bar["high"]) >= sl
-                target_hit = float(bar["high"]) >= target if side == "LONG" else float(bar["low"]) <= target
-                if stop_hit:
-                    exit_px, reason = sl, "SL" if not target_hit else "SL_FIRST_AMBIGUOUS"
-                elif target_hit:
-                    exit_px, reason = target, "TP"
-                else:
-                    pos["last_checked_candle"] = ts.isoformat()
-                    continue
+            decision = exit_decision(ts, bar, side, sl, target)
+            if decision is None:
+                pos["last_checked_candle"] = ts.isoformat()
+                continue
+            exit_px, reason = decision
             qty = int(pos["quantity"])
             gross = (exit_px - float(pos["entry_price"])) * qty if side == "LONG" else (float(pos["entry_price"]) - exit_px) * qty
             costs = (float(pos["entry_price"]) * qty + exit_px * qty) * COST_BPS_PER_SIDE / 10000.0
@@ -146,7 +140,7 @@ def process_pending(state, latest_by_symbol):
         # GitHub-hosted schedules can be delayed; skip stale signals instead of
         # pretending the historical next-candle open was actionable in real time.
         now = pd.Timestamp.now(tz=IST)
-        if entry_ts < now - pd.Timedelta(minutes=15):
+        if is_stale_entry(entry_ts, now):
             log_event(
                 "WARNING", "STALE_SIGNAL_SKIPPED",
                 f"{symbol} {signal_ts.isoformat()} intended_entry={entry_ts.isoformat()} now={now.isoformat()}",
@@ -159,8 +153,12 @@ def process_pending(state, latest_by_symbol):
         if (side == "LONG" and sl >= entry) or (side == "SHORT" and sl <= entry):
             del pending[key]
             continue
-        risk = abs(entry - sl)
-        target = entry + RR * risk if side == "LONG" else entry - RR * risk
+        try:
+            target = target_for(entry, sl, side, RR)
+        except ValueError as exc:
+            log_event("WARNING", "INVALID_RISK_SKIPPED", f"{symbol}: {exc}")
+            del pending[key]
+            continue
         qty = math.floor(NOTIONAL / entry) if entry > 0 else 0
         if qty < 1:
             del pending[key]
