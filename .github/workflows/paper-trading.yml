@@ -3,7 +3,7 @@ name: Strategy B Paper Trading
 on:
   workflow_dispatch:
   schedule:
-    # Poll every 5 minutes (UTC); script itself enforces NSE market hours in IST.
+    # Run every 5 minutes; script enforces NSE market hours in IST.
     - cron: "*/5 3-10 * * 1-5"
 
 permissions:
@@ -15,13 +15,13 @@ concurrency:
 
 jobs:
   paper-trading:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Checkout repository
+      - name: Checkout default branch
         uses: actions/checkout@v4
         with:
-          ref: paper-trading-implementation
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
@@ -31,24 +31,38 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
       - name: Compile Python files
-        run: python -m compileall -q app strategy_b_original.py
+        run: python -m compileall -q app tests strategy_b_original.py
 
       - name: Verify required configuration exists
         run: |
-          test -f config/symbol_tokens.csv || { echo "Missing config/symbol_tokens.csv; copy the example and populate verified Angel One tokens."; exit 1; }
+          test -f config/symbol_tokens.csv || { echo "Missing config/symbol_tokens.csv"; exit 1; }
           python - <<'PY'
           import csv
           p = "config/symbol_tokens.csv"
           with open(p, newline="", encoding="utf-8-sig") as f:
               rows = list(csv.DictReader(f))
-          if not rows or not {"symbol", "token", "exchange"}.issubset(rows[0]):
-              raise SystemExit("symbol_tokens.csv must have columns symbol,token,exchange and verified rows")
-          if not any(str(r.get("symbol", "")).strip().upper() == "NIFTY" and str(r.get("token", "")).strip() for r in rows):
-              raise SystemExit("A verified NIFTY index token is required; token IDs are never guessed.")
+          required = {"symbol", "token", "exchange"}
+          if not rows or not required.issubset(rows[0]):
+              raise SystemExit("symbol_tokens.csv must have symbol,token,exchange columns")
+          valid = [r for r in rows if all(str(r.get(c, "")).strip() for c in required)]
+          if not any(str(r.get("symbol", "")).strip().upper() == "NIFTY" and str(r.get("token", "")).strip() and str(r.get("exchange", "")).strip().upper() == "NSE" for r in valid):
+              raise SystemExit("A verified NSE NIFTY index token is required")
+          symbols = [str(r["symbol"]).strip().upper() for r in valid]
+          if len(symbols) != len(set(symbols)):
+              raise SystemExit("Duplicate symbols found in config/symbol_tokens.csv")
+          tokens = [str(r["token"]).strip() for r in valid]
+          if len(tokens) != len(set(tokens)):
+              raise SystemExit("Duplicate tokens found in config/symbol_tokens.csv")
+          if len(valid) < 2:
+              raise SystemExit("Add NIFTY and at least one verified stock token")
+          print(f"Token configuration OK: {len(valid)} instruments")
           PY
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
 
       - name: Run paper-only cycle
         env:
@@ -70,5 +84,5 @@ jobs:
           git add data/paper_state.json data/trade_history.csv data/system_log.csv 2>/dev/null || true
           if ! git diff --cached --quiet; then
             git commit -m "chore: persist Strategy B paper state"
-            git push origin HEAD:paper-trading-implementation
+            git push origin HEAD:main
           fi
