@@ -23,7 +23,8 @@ def _latest_setup_signal(df, nifty_trend):
 
     # Search only setups whose retest could still be valid at this bar.
     first_sweep = max(original.MIN_WARMUP_BARS, k - original.SETUP_EXPIRY - 3)
-    for i in range(k - 1, first_sweep - 1, -1):
+    # Preserve Final B's original chronological sweep priority when multiple setups overlap.
+    for i in range(first_sweep, k):
         atr_sweep = x.at[i, "atr"]
         if not np.isfinite(atr_sweep) or atr_sweep <= 0:
             continue
