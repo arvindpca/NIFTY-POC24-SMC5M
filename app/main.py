@@ -139,11 +139,10 @@ def process_pending(state, latest_by_symbol):
         entry_bar = next_bars.iloc[0]
         # Resampled candles are end-labelled; the next candle opens 15 minutes before its label.
         entry_ts = entry_bar["timestamp"] - pd.Timedelta(minutes=15)
-        # Do not create a retroactive entry if the runner missed the immediate next candle.
+        # Paper-only replay uses the actual next-candle open from broker history.
+        # GitHub Actions may run late; log that fact rather than pretending it was timely.
         if entry_ts < pd.Timestamp.now(tz=IST) - pd.Timedelta(minutes=15):
-            log_event("WARNING", "STALE_PENDING_SIGNAL_SKIPPED", f"{symbol} {signal_ts.isoformat()}")
-            del pending[key]
-            continue
+            log_event("WARNING", "DELAYED_PAPER_SIGNAL", f"{symbol} {signal_ts.isoformat()} entry_open={entry_ts.isoformat()}")
         entry = float(entry_bar["open"])
         sl = float(signal["stop_loss"])
         side = signal["side"]
