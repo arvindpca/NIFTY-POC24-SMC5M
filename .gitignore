@@ -5,3 +5,6 @@ __pycache__/
 config/symbol_tokens.csv
 data/*
 !data/.gitkeep
+!data/paper_state.json
+!data/trade_history.csv
+!data/system_log.csv
