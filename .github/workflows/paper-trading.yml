@@ -1,0 +1,74 @@
+name: Strategy B Paper Trading
+
+on:
+  workflow_dispatch:
+  schedule:
+    # GitHub cron uses UTC. Script itself enforces NSE market hours in IST.
+    - cron: "*/15 3-10 * * 1-5"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: strategy-b-paper-trading
+  cancel-in-progress: false
+
+jobs:
+  paper-trading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: paper-trading-implementation
+          token: \${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Compile Python files
+        run: python -m compileall -q app strategy_b_original.py
+
+      - name: Verify required configuration exists
+        run: |
+          test -f config/symbol_tokens.csv || { echo "Missing config/symbol_tokens.csv; copy the example and populate verified Angel One tokens."; exit 1; }
+          python - <<'PY'
+          import csv
+          p = "config/symbol_tokens.csv"
+          with open(p, newline="", encoding="utf-8-sig") as f:
+              rows = list(csv.DictReader(f))
+          if not rows or not {"symbol", "token", "exchange"}.issubset(rows[0]):
+              raise SystemExit("symbol_tokens.csv must have columns symbol,token,exchange and verified rows")
+          if not any(str(r.get("symbol", "")).strip().upper() == "NIFTY" and str(r.get("token", "")).strip() for r in rows):
+              raise SystemExit("A verified NIFTY index token is required; token IDs are never guessed.")
+          PY
+
+      - name: Run paper-only cycle
+        env:
+          PAPER_ONLY: "true"
+          ANGEL_API_KEY: \${{ secrets.ANGEL_API_KEY }}
+          ANGEL_CLIENT_CODE: \${{ secrets.ANGEL_CLIENT_CODE }}
+          ANGEL_PIN: \${{ secrets.ANGEL_PIN }}
+          ANGEL_TOTP_SECRET: \${{ secrets.ANGEL_TOTP_SECRET }}
+          TELEGRAM_BOT_TOKEN: \${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: \${{ secrets.TELEGRAM_CHAT_ID }}
+          PAPER_COST_BPS_PER_SIDE: "0"
+        run: python -m app.main
+
+      - name: Persist paper state and audit CSVs
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/paper_state.json data/trade_history.csv data/system_log.csv 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: persist Strategy B paper state"
+            git push origin HEAD:paper-trading-implementation
+          fi
