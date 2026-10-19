@@ -1,4 +1,4 @@
-name: NIFTY_SMC_POC Telegram Design Preview
+name: NIFTY_SMC_POC Telegram Delivery Test
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 jobs:
-  preview:
+  telegram-delivery:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -30,7 +30,7 @@ jobs:
           python -m compileall -q app tests strategy_b_original.py
           python -m unittest discover -s tests -v
 
-      - name: Send three sample-only Telegram previews
+      - name: Send sample-only Telegram messages and verify API acknowledgements
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
