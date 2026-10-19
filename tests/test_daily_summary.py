@@ -26,8 +26,9 @@ class DailySummaryTests(unittest.TestCase):
             "open_positions": 1, "errors": [],
         })
         self.assertIn("NIFTY_SMC_POC — DAILY PAPER SUMMARY", message)
+        self.assertIn("NIFTY_SMC_POC", message)
         self.assertIn("VIRTUAL TRADING ONLY", message)
-        self.assertIn("Net P&L today: ₹125.50", message)
+        self.assertIn("Net P&amp;L today: <b>₹125.50</b>", message)
         self.assertIn("Errors today: 0", message)
 
 
