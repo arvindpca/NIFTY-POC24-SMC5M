@@ -1,4 +1,4 @@
-"""Send styled sample Telegram messages without reading/writing paper-trading state."""
+"""Send sample-only Telegram previews and verify API acknowledgements."""
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -49,14 +49,14 @@ def main():
     }
 
     messages = [
-        entry_alert(sample),
-        close_alert(sample, stats),
-        format_summary(summary),
+        ("ENTRY SAMPLE", entry_alert(sample)),
+        ("CLOSE SAMPLE", close_alert(sample, stats)),
+        ("DAILY SUMMARY SAMPLE", format_summary(summary)),
     ]
-    for index, message in enumerate(messages, start=1):
-        send_telegram(message)
-        print(f"Preview message {index}/3 submitted to Telegram API.")
-    print("DESIGN PREVIEW COMPLETE. Sample values only; no strategy state read/written and no real orders.")
+    for label, message in messages:
+        ack = send_telegram(message)
+        print(f"TELEGRAM ACK | {label} | message_id={ack['message_id']} | chat_id={ack['chat_id']}")
+    print("TELEGRAM DELIVERY TEST PASSED. Sample values only; no strategy state read/written and no real orders.")
 
 
 if __name__ == "__main__":
