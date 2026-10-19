@@ -2,6 +2,13 @@ name: NIFTY_SMC_POC Telegram Delivery Test
 
 on:
   workflow_dispatch:
+  # Send clearly labelled sample-only messages after notification-test changes.
+  push:
+    branches: [main]
+    paths:
+      - "app/telegram_preview.py"
+      - "app/notifications.py"
+      - ".github/workflows/telegram-design-preview.yml"
 
 permissions:
   contents: read
