@@ -1,5 +1,7 @@
 smartapi-python
 logzero
+websocket-client
+pycryptodome
 pyotp
 pandas
 numpy
