@@ -1,5 +1,6 @@
 """Send a daily IST summary of Strategy B virtual paper trades."""
 import csv
+import html
 import json
 import os
 from datetime import datetime
@@ -81,26 +82,32 @@ def build_summary(now=None):
 
 def format_summary(stats):
     error_lines = [
-        f"- {row.get('event', 'ERROR')}: {row.get('detail', '')[:180]}"
+        f"• <b>{html.escape(str(row.get('event', 'ERROR')))}</b>: "
+        f"{html.escape(str(row.get('detail', ''))[:180])}"
         for row in stats["errors"][:3]
     ]
+    pnl = f"₹{stats['net_pnl']:,.2f}"
     message = (
-        "NIFTY_SMC_POC — DAILY PAPER SUMMARY\n"
-        "VIRTUAL TRADING ONLY • NO REAL ORDERS\n"
-        f"Date (IST): {stats['date']}\n"
-        f"Virtual entries today: {stats['entries']}\n"
-        f"Closed today: {stats['closed']} | Wins: {stats['wins']} | "
-        f"Losses: {stats['losses']} | Breakeven: {stats['breakeven']}\n"
-        f"Net P&L today: ₹{stats['net_pnl']:.2f}\n"
-        f"Open virtual positions now: {stats['open_positions']}\n"
-        f"Errors today: {len(stats['errors'])}"
+        "━━━━━━━━━━━━━━━━━━\\n"
+        "📊 <b>NIFTY_SMC_POC</b>\\n"
+        "🗓️ <b>DAILY PAPER REPORT</b>\\n"
+        "━━━━━━━━━━━━━━━━━━\\n"
+        f"📅 Date: <code>{html.escape(str(stats['date']))}</code> IST\\n"
+        "──────── <b>ACTIVITY</b> ────────\\n"
+        f"🟦 Virtual entries: <b>{stats['entries']}</b>\\n"
+        f"📂 Closed trades: <b>{stats['closed']}</b>\\n"
+        f"🟢 Wins: <b>{stats['wins']}</b>  🔴 Losses: <b>{stats['losses']}</b>  ⚪ BE: <b>{stats['breakeven']}</b>\\n"
+        "──────── <b>PERFORMANCE</b> ────────\\n"
+        f"💹 Net P&amp;L today: <b>{pnl}</b>\\n"
+        f"📌 Open virtual positions: <b>{stats['open_positions']}</b>\\n"
+        f"🛠️ Errors: <b>{len(stats['errors'])}</b>"
     )
     if error_lines:
-        message += "\n" + "\n".join(error_lines)
+        message += "\\n──────── <b>ERROR DETAILS</b> ────────\\n" + "\\n".join(error_lines)
     if len(stats["errors"]) > 3:
-        message += f"\n...and {len(stats['errors']) - 3} more errors (see GitHub Actions log)."
+        message += f"\\n…and {len(stats['errors']) - 3} more errors (see GitHub Actions log)."
+    message += "\\n━━━━━━━━━━━━━━━━━━\\n🧪 <b>VIRTUAL TRADING ONLY · NO REAL ORDERS</b>"
     return message
-
 
 def main():
     stats = build_summary()
