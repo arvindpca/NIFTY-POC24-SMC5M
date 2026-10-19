@@ -42,6 +42,7 @@ def entry_alert(trade: dict) -> str:
     side_icon = "🟢" if side == "LONG" else "🔴" if side == "SHORT" else "⚪"
     return (
         "━━━━━━━━━━━━━━━━━━\n"
+        "🎓 <b>EDUCATION PURPOSE ONLY</b>\n"
         "📡 <b>NIFTY_SMC_POC</b>\n"
         "🧪 <b>VIRTUAL ENTRY ALERT</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
