@@ -228,9 +228,11 @@ def main():
         candle_key = frames[symbol].iloc[-1]["timestamp"].isoformat()
         if state["last_candle"].get(symbol) == candle_key:
             continue
-        state["last_candle"][symbol] = candle_key
         try:
             signal = get_latest_signal(symbol, raw, nifty_raw)
+            # Mark the candle only after successful evaluation. If evaluation raises,
+            # the next scheduled run must be allowed to retry the same candle.
+            state["last_candle"][symbol] = candle_key
             if not signal:
                 continue
             signal_key = f"{symbol}|{signal['side']}|{signal['signal_time']}"
