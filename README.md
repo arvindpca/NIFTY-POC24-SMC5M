@@ -1,6 +1,6 @@
 # Strategy B Paper Trading — Angel One SmartAPI
 
-This repository is **paper-trading only**. It does not place orders. The original `strategy_b_original.py` is preserved as the strategy source of truth.
+This repository is **paper-trading only**. It does not place orders. `strategy_b_original.py` remains the Final B source of truth, with the requested force-exit time changed to 15:00 IST.
 
 ## Current implementation
 
@@ -9,7 +9,7 @@ This repository is **paper-trading only**. It does not place orders. The origina
 - Uses the Strategy B core setup: liquidity sweep → displacement body >= 1 ATR → MSS → FVG OR OB → retest and confirmation.
 - Active filters: NIFTY 1H trend and approximate rolling 24-hour stock POC.
 - Paper entry model: next 15-minute candle open, fixed target 1.5R, SL at sweep extreme +/- 0.10 ATR.
-- Entry cutoff 14:20 IST; force exit follows original first end-labelled 15-minute candle timestamp >= 15:10 rule.
+- Entry cutoff 14:20 IST; user-selected force exit is the completed end-labelled 15-minute candle at 15:00 IST (exit at that candle's close, before same-bar SL/TP checks).
 - Maximum 5 concurrent positions, no same-symbol overlap, maximum 5 entries per day.
 - Restart-safe JSON state, CSV trade history and system log; optional Telegram alerts.
 - No Angel One order-placement method is called.
