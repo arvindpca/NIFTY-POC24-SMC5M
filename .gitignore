@@ -8,3 +8,4 @@ data/*
 !data/paper_state.json
 !data/trade_history.csv
 !data/system_log.csv
+!data/strategy_b_paper_history.xlsx
