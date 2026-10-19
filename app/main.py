@@ -13,7 +13,7 @@ import pandas as pd
 from app.config import validate_config
 from app.notifications import send_telegram, entry_alert, close_alert
 from app.smartapi_client import create_data_client, fetch_5m_candles
-from app.storage import load_state, save_state, save_trade, log_event, DATA_DIR, FIELDS
+from app.storage import load_state, save_state, save_trade, log_event, export_excel, DATA_DIR, FIELDS
 from app.strategy_adapter import get_latest_signal
 from app.rules import exit_decision, is_stale_entry, target_for
 import strategy_b_original as original
@@ -247,6 +247,12 @@ def main():
     # Process again so a signal with an available immediate next candle is handled.
     process_pending(state, frames)
     save_state(state)
+    try:
+        workbook = export_excel()
+        print(f"Excel history exported: {workbook}")
+    except Exception as exc:
+        log_event("ERROR", "EXCEL_EXPORT_FAILED", str(exc))
+        print(f"Excel export failed: {exc}")
     try:
         api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
     except Exception:
