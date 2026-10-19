@@ -19,7 +19,7 @@ def send_telegram(message: str) -> None:
 def entry_alert(trade: dict) -> str:
     return (
         "EDUCATION PURPOSE ONLY\n"
-        "STRATEGY B — VIRTUAL PAPER ENTRY\n"
+        "NIFTY_SMC_POC — VIRTUAL PAPER ENTRY\n"
         f"Trade ID: {trade['trade_id']}\nSymbol: {trade['symbol']} | Side: {trade['side']}\n"
         f"Signal time (IST): {trade['signal_time']}\nEntry (virtual): {trade['entry_price']:.2f}\n"
         f"SL: {trade['stop_loss']:.2f} | TP (1.5R): {trade['target']:.2f}\n"
@@ -31,7 +31,7 @@ def entry_alert(trade: dict) -> str:
 
 def close_alert(trade: dict, stats: dict) -> str:
     return (
-        f"PAPER TRADE {trade.get('result', '')}\n"
+        f"NIFTY_SMC_POC — PAPER TRADE {trade.get('result', '')}\n"
         f"Trade ID: {trade.get('trade_id')} | {trade.get('symbol')} {trade.get('side')}\n"
         f"Exit reason: {trade.get('exit_reason')} | Exit: {trade.get('exit_price')}\n"
         f"Net P&L: ₹{trade.get('net_pnl', 0):.2f}\n"
