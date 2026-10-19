@@ -2,7 +2,7 @@
 from datetime import time, timedelta
 
 FORCE_EXIT_TIME = time(15, 0)
-ENTRY_STALE_GRACE = timedelta(minutes=15)
+ENTRY_STALE_GRACE = timedelta(minutes=20)
 RISK_REWARD = 1.5
 
 
