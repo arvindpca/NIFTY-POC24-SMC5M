@@ -48,12 +48,12 @@ The workflow persists paper state and CSV records by committing to `paper-tradin
 
 ### 4. Validate first
 
-Run the **Validate Strategy B** workflow to compile Python. After the verified token CSV and secrets are present, use **Strategy B Paper Trading → Run workflow**. Check the Actions log and `data/system_log.csv`.
+Run the **Validate Strategy B** workflow to compile Python and execute unit tests for 1.5R targets, stale-entry handling, SL/TP precedence, and the 15:00 force exit. After the verified token CSV and secrets are present, use **Strategy B Paper Trading → Run workflow**. Check the Actions log and `data/system_log.csv`.
 
 ## Important limitations
 
 - Strategy B's POC is an OHLCV-based proxy, not true tick-level volume-at-price.
 - This is a paper simulation, not evidence of profitability or a recommendation to trade.
-- GitHub Actions is not an always-on trading server; alerts can arrive late.
+- GitHub Actions is not an always-on trading server; alerts can arrive late. Entries are simulated at the next 15-minute candle open after that candle is available in completed history, so the alert may arrive after the simulated entry. Signals older than the 20-minute grace are skipped rather than backfilled.
 - Paper state is committed to this private repository. Keep repository access restricted.
 - No real orders are sent; `PAPER_ONLY` must remain `true`.
