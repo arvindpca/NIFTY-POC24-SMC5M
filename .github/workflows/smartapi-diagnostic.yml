@@ -2,6 +2,14 @@ name: Read-Only SmartAPI Diagnostic
 
 on:
   workflow_dispatch:
+  # Read-only live-data verification only when diagnostic inputs change on main.
+  push:
+    branches: [main]
+    paths:
+      - "app/diagnostics.py"
+      - "app/smartapi_client.py"
+      - "config/symbol_tokens.csv"
+      - ".github/workflows/smartapi-diagnostic.yml"
 
 permissions:
   contents: read
