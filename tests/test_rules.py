@@ -43,7 +43,7 @@ class FinalBRulesTests(unittest.TestCase):
 
     def test_recent_entry_not_stale_at_grace_boundary(self):
         now = datetime(2026, 10, 19, 10, 30, tzinfo=IST)
-        self.assertFalse(is_stale_entry(now - timedelta(minutes=15), now))
+        self.assertFalse(is_stale_entry(now - timedelta(minutes=20), now))
 
 
 if __name__ == "__main__":
