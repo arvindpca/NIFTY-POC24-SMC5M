@@ -3,8 +3,8 @@ name: Strategy B Paper Trading
 on:
   workflow_dispatch:
   schedule:
-    # GitHub cron uses UTC. Script itself enforces NSE market hours in IST.
-    - cron: "*/15 3-10 * * 1-5"
+    # Poll every 5 minutes (UTC); script itself enforces NSE market hours in IST.
+    - cron: "*/5 3-10 * * 1-5"
 
 permissions:
   contents: write
