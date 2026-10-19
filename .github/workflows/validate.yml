@@ -26,3 +26,33 @@ jobs:
 
       - name: Test Final B entry and exit rules
         run: python -m unittest discover -s tests -v
+
+      - name: Generate and verify actual Excel workbook in an isolated temporary directory
+        env:
+          DATA_DIR: ${{ runner.temp }}/strategy-b-excel-check
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from openpyxl import load_workbook
+          from app.storage import export_excel
+
+          path = export_excel()
+          if not path.is_file() or path.stat().st_size <= 0:
+              raise SystemExit("Excel export did not create a non-empty workbook")
+          workbook = load_workbook(path, read_only=True)
+          expected = {"TRADE_HISTORY", "CONDITIONS", "DAILY_SUMMARY", "PERFORMANCE", "SYSTEM_LOG"}
+          actual = set(workbook.sheetnames)
+          if actual != expected:
+              raise SystemExit(f"Unexpected workbook sheets: {sorted(actual)}")
+          workbook.close()
+          print(f"EXCEL_EXPORT_PASS | bytes={path.stat().st_size} | sheets={len(actual)}")
+          print(f"EXCEL_PATH | {path}")
+          PY
+
+      - name: Preserve verified Excel test workbook
+        uses: actions/upload-artifact@v4
+        with:
+          name: strategy-b-excel-report-verification
+          path: ${{ runner.temp }}/strategy-b-excel-check/strategy_b_paper_history.xlsx
+          if-no-files-found: error
+          retention-days: 3
