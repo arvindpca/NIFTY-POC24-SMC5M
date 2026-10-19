@@ -5,6 +5,7 @@ candle. This verifies API resolution and recent candle availability, not that a
 token has been compared against Angel One's official instrument master.
 """
 import os
+import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -39,6 +40,9 @@ def main():
             except Exception as exc:
                 failures.append(symbol)
                 print(f"DATA FAIL | {index}/{len(tokens)} | {symbol} | {type(exc).__name__}: {exc}")
+            # Pace historical-data requests to avoid bursting the broker API.
+            if index < len(tokens):
+                time.sleep(0.45)
     finally:
         try:
             api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
