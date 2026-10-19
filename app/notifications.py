@@ -24,17 +24,21 @@ def _money(value) -> str:
         return "₹0.00"
 
 
-def send_telegram(message: str) -> None:
+def send_telegram(message: str) -> dict:
+    """Send a Telegram message and require a positive Bot API acknowledgement."""
     token, chat_id = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
-        # Telegram is optional for local syntax/config checks; the event is still logged.
-        return
+        raise RuntimeError("Telegram delivery was not attempted: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing.")
     response = requests.post(
         f"https://api.telegram.org/bot{token}/sendMessage",
         json={"chat_id": chat_id, "text": message, "parse_mode": "HTML", "disable_web_page_preview": True},
         timeout=15,
     )
     response.raise_for_status()
+    result = response.json()
+    if not isinstance(result, dict) or result.get("ok") is not True or not isinstance(result.get("result"), dict):
+        raise RuntimeError("Telegram Bot API did not acknowledge message delivery.")
+    return {"message_id": result["result"].get("message_id"), "chat_id": result["result"].get("chat", {}).get("id")}
 
 
 def entry_alert(trade: dict) -> str:
@@ -69,6 +73,7 @@ def close_alert(trade: dict, stats: dict) -> str:
     pnl = float(trade.get("net_pnl", 0) or 0)
     return (
         "━━━━━━━━━━━━━━━━━━\n"
+        "🎓 <b>EDUCATION PURPOSE ONLY</b>\n"
         "📡 <b>NIFTY_SMC_POC</b>\n"
         f"{icon} <b>VIRTUAL TRADE CLOSED · {_h(result or 'RESULT')}</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
