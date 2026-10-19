@@ -88,25 +88,25 @@ def format_summary(stats):
     ]
     pnl = f"₹{stats['net_pnl']:,.2f}"
     message = (
-        "━━━━━━━━━━━━━━━━━━\\n"
-        "📊 <b>NIFTY_SMC_POC</b>\\n"
-        "🗓️ <b>DAILY PAPER REPORT</b>\\n"
-        "━━━━━━━━━━━━━━━━━━\\n"
-        f"📅 Date: <code>{html.escape(str(stats['date']))}</code> IST\\n"
-        "──────── <b>ACTIVITY</b> ────────\\n"
-        f"🟦 Virtual entries: <b>{stats['entries']}</b>\\n"
-        f"📂 Closed trades: <b>{stats['closed']}</b>\\n"
-        f"🟢 Wins: <b>{stats['wins']}</b>  🔴 Losses: <b>{stats['losses']}</b>  ⚪ BE: <b>{stats['breakeven']}</b>\\n"
-        "──────── <b>PERFORMANCE</b> ────────\\n"
-        f"💹 Net P&amp;L today: <b>{pnl}</b>\\n"
-        f"📌 Open virtual positions: <b>{stats['open_positions']}</b>\\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "📊 <b>NIFTY_SMC_POC</b>\n"
+        "🗓️ <b>DAILY PAPER REPORT</b>\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        f"📅 Date: <code>{html.escape(str(stats['date']))}</code> IST\n"
+        "──────── <b>ACTIVITY</b> ────────\n"
+        f"🟦 Virtual entries: <b>{stats['entries']}</b>\n"
+        f"📂 Closed trades: <b>{stats['closed']}</b>\n"
+        f"🟢 Wins: <b>{stats['wins']}</b>  🔴 Losses: <b>{stats['losses']}</b>  ⚪ BE: <b>{stats['breakeven']}</b>\n"
+        "──────── <b>PERFORMANCE</b> ────────\n"
+        f"💹 Net P&amp;L today: <b>{pnl}</b>\n"
+        f"📌 Open virtual positions: <b>{stats['open_positions']}</b>\n"
         f"🛠️ Errors: <b>{len(stats['errors'])}</b>"
     )
     if error_lines:
-        message += "\\n──────── <b>ERROR DETAILS</b> ────────\\n" + "\\n".join(error_lines)
+        message += "\n──────── <b>ERROR DETAILS</b> ────────\n" + "\n".join(error_lines)
     if len(stats["errors"]) > 3:
-        message += f"\\n…and {len(stats['errors']) - 3} more errors (see GitHub Actions log)."
-    message += "\\n━━━━━━━━━━━━━━━━━━\\n🧪 <b>VIRTUAL TRADING ONLY · NO REAL ORDERS</b>"
+        message += f"\n…and {len(stats['errors']) - 3} more errors (see GitHub Actions log)."
+    message += "\n━━━━━━━━━━━━━━━━━━\n🧪 <b>VIRTUAL TRADING ONLY · NO REAL ORDERS</b>"
     return message
 
 def main():
