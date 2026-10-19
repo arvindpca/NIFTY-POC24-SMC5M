@@ -79,10 +79,10 @@ def close_alert(trade: dict, stats: dict) -> str:
         f"📊 Net P&amp;L: <b>{_money(pnl)}</b>\n"
         "──────── <b>SESSION STATS</b> ────────\n"
         f"🔢 Closed trades: {_h(stats.get('closed', 0))}\n"
-        f"🎯 Win rate: {_fixed(stats.get('win_rate_pct', 0))}%\\n"
+        f"🎯 Win rate: {_fixed(stats.get('win_rate_pct', 0))}%\n"
         f"📈 Gross profit: {_money(stats.get('gross_profit'))}\n"
         f"📉 Gross loss: {_money(stats.get('gross_loss'))}\n"
-        f"⚖️ Profit factor: {_fixed(stats.get('profit_factor', 0))}\\n"
+        f"⚖️ Profit factor: {_fixed(stats.get('profit_factor', 0))}\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "🧪 <b>VIRTUAL PAPER TRADE ONLY · NO REAL ORDERS</b>"
     )
