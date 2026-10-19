@@ -73,7 +73,7 @@ DAILY_LOSS_LIMIT = None  # DISABLED for strategy-condition accuracy testing
 MAX_NEW_ENTRIES_PER_DAY = 5
 MAX_CONCURRENT_POSITIONS = 5
 ENTRY_CUTOFF = dtime(14, 20)
-FORCE_EXIT_TIME = dtime(15, 10)  # 15m end-labelled bars: first bar timestamp >= 15:10 (normally 15:15 close), NOT an exact 15:10 fill
+FORCE_EXIT_TIME = dtime(15, 0)  # User-selected force exit: first completed end-labelled 15m bar timestamp >= 15:00 (15:00 close).
 ATR_LEN = 14
 EMA_LEN = 20
 PIVOT_L = 2
@@ -671,7 +671,7 @@ def backtest_variant(symbol_frames, variant, filter_variant):
             "remaining_exit_fraction":remaining_fraction,
             "remaining_exit_quantity":remaining_qty,
             "weighted_exit_price_for_cost":weighted_exit_px,
-            "force_exit_policy":"first END-labelled 15m bar timestamp >= 15:10; typically 15:15 close before intrabar SL/TP checks",
+            "force_exit_policy":"first END-labelled 15m bar timestamp >= 15:00; 15:00 close before intrabar SL/TP checks",
             "cost_model":"ZERO_COST_BASELINE_NOT_REALISTIC",
             "equity_at_entry":equity,"nifty_trend":nt,"stock_htf_trend":st,"poc":poc,
             "wick_demand_low":row.get("wick_demand_low", np.nan),"wick_demand_high":row.get("wick_demand_high", np.nan),
@@ -839,7 +839,7 @@ def main():
     log.append(f"Selected watchlist symbols: {len(selected_symbols)}; matched raw CSVs: {len(raw_frames)}; prepared: {len(prepared)}")
     log.append("V7 4H audit: session-anchored full candle 09:15-13:15 IST from 16 completed 15m bars; 13:15-15:30 partial segment excluded; zone activates strictly after 13:15; incomplete 16-bar windows skipped.")
     log.append("V7 wick thresholds: wick >= 1.5x body and >= 30% of 4H range. Zone is invalidated on close beyond wick extreme.")
-    log.append("V10 exit audit: hybrid partial exit price/fraction/quantity/realized gross PnL and remaining position are recorded per trade. Force exit uses first END-labelled 15m bar timestamp >= 15:10 (typically 15:15 close) before checking that bar intrabar SL/TP. Costs are 0 bps/side by design and results are not realistic net-return estimates.")
+    log.append("V10 exit audit: hybrid partial exit price/fraction/quantity/realized gross PnL and remaining position are recorded per trade. User-selected force exit uses first END-labelled 15m bar timestamp >= 15:00 (15:00 close) before checking that bar intrabar SL/TP. Costs are 0 bps/side by design and results are not realistic net-return estimates.")
     log.append("NIFTY trend A/B audit: every stock-filter combination is run WITH and WITHOUT the NIFTY 1H trend gate; disabling the gate does not remove NIFTY data preparation, only the directional entry filter.")
     unmatched = sorted(selected_symbols - set(raw_frames))
     if unmatched:
@@ -922,7 +922,7 @@ def main():
     print("NSE SMC FIXED-NOTIONAL 5-vs-10 COMPARISON FINISHED")
     print(f"Prepared stocks: {len(prepared)}; variants: {len(summary)}; results: {RESULT_DIR}")
     print(summary.to_string(index=False))
-    print("NOTE: Fixed notional about INR 50,000 per position (whole shares); max concurrent positions 5 vs 10; max 5 new entries/day retained; cash-only; zero costs are comparison-only; POC is an OHLCV approximation; force exit is a 15m bar-close approximation, not an exact 15:10 fill.")
+    print("NOTE: Fixed notional about INR 50,000 per position (whole shares); max concurrent positions 5 vs 10; max 5 new entries/day retained; cash-only; zero costs are comparison-only; POC is an OHLCV approximation; force exit is the 15:00 end-labelled 15m bar close, not an exact clock-time fill.")
     print("="*72)
 
 if __name__=="__main__":
