@@ -85,7 +85,7 @@ def format_summary(stats):
         for row in stats["errors"][:3]
     ]
     message = (
-        "STRATEGY B — DAILY PAPER SUMMARY\n"
+        "NIFTY_SMC_POC — DAILY PAPER SUMMARY\n"
         "VIRTUAL TRADING ONLY • NO REAL ORDERS\n"
         f"Date (IST): {stats['date']}\n"
         f"Virtual entries today: {stats['entries']}\n"
