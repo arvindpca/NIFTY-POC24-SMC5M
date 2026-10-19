@@ -118,7 +118,10 @@ def close_positions(state, latest_by_symbol):
             save_trade(closed)
             del open_positions[trade_id]
             summary = stats_from_history()
-            send_telegram(close_alert(closed, summary))
+            try:
+                send_telegram(close_alert(closed, summary))
+            except Exception as exc:
+                log_event("ERROR", "TELEGRAM_EXIT_FAILED", f"{trade_id}: {exc}")
             log_event("INFO", "PAPER_EXIT", f"{trade_id} {reason} net={net:.2f}")
             break
 
@@ -139,10 +142,17 @@ def process_pending(state, latest_by_symbol):
         entry_bar = next_bars.iloc[0]
         # Resampled candles are end-labelled; the next candle opens 15 minutes before its label.
         entry_ts = entry_bar["timestamp"] - pd.Timedelta(minutes=15)
-        # Paper-only replay uses the actual next-candle open from broker history.
-        # GitHub Actions may run late; log that fact rather than pretending it was timely.
-        if entry_ts < pd.Timestamp.now(tz=IST) - pd.Timedelta(minutes=15):
-            log_event("WARNING", "DELAYED_PAPER_SIGNAL", f"{symbol} {signal_ts.isoformat()} entry_open={entry_ts.isoformat()}")
+        # Never simulate a new entry retrospectively from a stale candle.
+        # GitHub-hosted schedules can be delayed; skip stale signals instead of
+        # pretending the historical next-candle open was actionable in real time.
+        now = pd.Timestamp.now(tz=IST)
+        if entry_ts < now - pd.Timedelta(minutes=15):
+            log_event(
+                "WARNING", "STALE_SIGNAL_SKIPPED",
+                f"{symbol} {signal_ts.isoformat()} intended_entry={entry_ts.isoformat()} now={now.isoformat()}",
+            )
+            del pending[key]
+            continue
         entry = float(entry_bar["open"])
         sl = float(signal["stop_loss"])
         side = signal["side"]
@@ -179,7 +189,10 @@ def process_pending(state, latest_by_symbol):
         }
         open_positions[trade_id] = trade
         daily_entries[day] = entries_today + 1
-        send_telegram(entry_alert(trade))
+        try:
+            send_telegram(entry_alert(trade))
+        except Exception as exc:
+            log_event("ERROR", "TELEGRAM_ENTRY_FAILED", f"{trade_id}: {exc}")
         log_event("INFO", "PAPER_ENTRY", f"{trade_id} qty={qty} entry={entry}")
         del pending[key]
 
