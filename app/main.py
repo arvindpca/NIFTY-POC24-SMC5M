@@ -137,7 +137,8 @@ def process_pending(state, latest_by_symbol):
         if next_bars.empty:
             continue
         entry_bar = next_bars.iloc[0]
-        entry_ts = entry_bar["timestamp"]
+        # Resampled candles are end-labelled; the next candle opens 15 minutes before its label.
+        entry_ts = entry_bar["timestamp"] - pd.Timedelta(minutes=15)
         # Do not create a retroactive entry if the runner missed the immediate next candle.
         if entry_ts < pd.Timestamp.now(tz=IST) - pd.Timedelta(minutes=15):
             log_event("WARNING", "STALE_PENDING_SIGNAL_SKIPPED", f"{symbol} {signal_ts.isoformat()}")
@@ -157,7 +158,8 @@ def process_pending(state, latest_by_symbol):
             continue
         open_positions = state["open_positions"]
         day = entry_ts.date().isoformat()
-        entries_today = sum(1 for p in open_positions.values() if str(p.get("entry_time", "")).startswith(day))
+        daily_entries = state.setdefault("daily_entries", {})
+        entries_today = int(daily_entries.get(day, 0))
         if len(open_positions) >= MAX_OPEN or entries_today >= MAX_ENTRIES_PER_DAY:
             del pending[key]
             continue
@@ -177,6 +179,7 @@ def process_pending(state, latest_by_symbol):
             "last_checked_candle": entry_ts.isoformat(),
         }
         open_positions[trade_id] = trade
+        daily_entries[day] = entries_today + 1
         send_telegram(entry_alert(trade))
         log_event("INFO", "PAPER_ENTRY", f"{trade_id} qty={qty} entry={entry}")
         del pending[key]
