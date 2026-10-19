@@ -10,6 +10,13 @@ def _h(value) -> str:
     return html.escape(str(value if value is not None else "—"), quote=False)
 
 
+def _fixed(value) -> str:
+    try:
+        return f"{float(value):.2f}"
+    except (TypeError, ValueError):
+        return "0.00"
+
+
 def _money(value) -> str:
     try:
         return f"₹{float(value):,.2f}"
