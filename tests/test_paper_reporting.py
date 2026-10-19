@@ -11,7 +11,7 @@ from app import notifications, storage
 
 
 class PaperReportingTests(unittest.TestCase):
-    def test_education_header_only_on_entry_alert(self):
+    def test_education_header_on_entry_and_close_alerts(self):
         trade = {
             "trade_id": "TEST-001", "symbol": "TEST", "side": "LONG",
             "signal_time": "2026-10-20T10:00:00+05:30",
@@ -25,7 +25,7 @@ class PaperReportingTests(unittest.TestCase):
             {"closed": 1, "win_rate_pct": 100, "gross_profit": 30, "gross_loss": 0, "profit_factor": float("inf")},
         )
         self.assertIn("EDUCATION PURPOSE ONLY", entry)
-        self.assertNotIn("EDUCATION PURPOSE ONLY", close)
+        self.assertIn("EDUCATION PURPOSE ONLY", close)
         self.assertIn("PAPER TRADING ONLY", entry)
         self.assertIn("NO REAL ORDERS", close)
 
