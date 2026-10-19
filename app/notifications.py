@@ -73,7 +73,6 @@ def close_alert(trade: dict, stats: dict) -> str:
     pnl = float(trade.get("net_pnl", 0) or 0)
     return (
         "━━━━━━━━━━━━━━━━━━\n"
-        "🎓 <b>EDUCATION PURPOSE ONLY</b>\n"
         "📡 <b>NIFTY_SMC_POC</b>\n"
         f"{icon} <b>VIRTUAL TRADE CLOSED · {_h(result or 'RESULT')}</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
