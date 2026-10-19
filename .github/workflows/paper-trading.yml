@@ -1,7 +1,9 @@
 name: Strategy B Paper Trading
 
 on:
-  # Manual runs only until live-data, state persistence, and reports are validated.
+  # Live-data paper trading only. The Python app gates polling to NSE hours (IST).
+  schedule:
+    - cron: "*/15 3-10 * * 1-5"
   workflow_dispatch:
 
 permissions:
@@ -14,7 +16,7 @@ concurrency:
 jobs:
   paper-trading:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout default branch
         uses: actions/checkout@v7
@@ -62,7 +64,7 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
-      - name: Run paper-only cycle
+      - name: Run live-data paper-only cycle
         env:
           PAPER_ONLY: "true"
           ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
