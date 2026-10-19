@@ -202,6 +202,15 @@ def main():
     now = datetime.now(IST)
     if now.weekday() >= 5 or now.time() < datetime.strptime("09:15", "%H:%M").time() or now.time() > datetime.strptime("15:35", "%H:%M").time():
         print(f"Outside NSE session: {now.isoformat()}; no live polling.")
+        # Still permit an explicitly manual off-session run to create the
+        # workbook from the current persisted CSVs. Do not authenticate or poll data.
+        try:
+            workbook = export_excel()
+            print(f"Excel history exported (off-session, no data polling): {workbook}")
+        except Exception as exc:
+            log_event("ERROR", "EXCEL_EXPORT_FAILED", str(exc))
+            print(f"Excel export failed: {exc}")
+            raise
         return
     tokens = load_tokens()
     api = create_data_client()
