@@ -106,10 +106,19 @@ def fetch_5m_candles(api, exchange, token, lookback_days=5):
     return df.reset_index(drop=True)
 
 
-def fetch_15m_candles(api, exchange, token, lookback_days=10):
-    """Fetch direct 15-minute candles; do not build them from 5-minute data."""
+def fetch_15m_candles(api, exchange, token, lookback_days=10, from_timestamp=None):
+    """Fetch direct 15-minute candles. from_timestamp enables incremental cache updates."""
     now = datetime.now(IST)
-    start = now - timedelta(days=lookback_days)
+    if from_timestamp is None:
+        start = now - timedelta(days=lookback_days)
+    else:
+        start = pd.Timestamp(from_timestamp)
+        if start.tzinfo is None:
+            start = start.tz_localize(IST)
+        else:
+            start = start.tz_convert(IST)
+        # Re-fetch one candle of overlap to repair boundary/gap issues.
+        start = start - pd.Timedelta(minutes=30)
     params = {
         "exchange": str(exchange),
         "symboltoken": str(token),
@@ -130,6 +139,6 @@ def fetch_15m_candles(api, exchange, token, lookback_days=10):
     df = df.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
     # Angel One timestamps are treated as candle-start labels; discard forming bars.
     df = df[df["timestamp"] + pd.Timedelta(minutes=15) <= pd.Timestamp.now(tz=IST)]
-    if len(df) < 80:
+    if from_timestamp is None and len(df) < 80:
         raise RuntimeError(f"Insufficient completed 15-minute history ({len(df)} bars) for strategy warm-up.")
     return df.reset_index(drop=True)
