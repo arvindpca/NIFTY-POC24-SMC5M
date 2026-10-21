@@ -1,6 +1,7 @@
-"""Refresh the paper scanner's NSE equity tokens from Angel One's official instrument master.
+"""Refresh verified NSE cash-equity tokens for the paper scanner.
 
-This is for paper-only market-data scanning. It never places orders and never guesses tokens.
+Only symbols with an exact official NSE -EQ instrument are scanned. Unresolved
+symbols are written to a report instead of aborting the whole paper-only scan.
 """
 import csv
 import json
@@ -12,8 +13,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 UNIVERSE = ROOT / "config" / "scan_universe.csv"
 TOKEN_FILE = ROOT / "config" / "symbol_tokens.csv"
+REPORT_FILE = ROOT / "data" / "unresolved_symbols.csv"
 MASTER_URL = "https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json"
 NIFTY_TOKEN = "99926000"
+NSE_SEGMENTS = {"NSE", "NSE_CM"}
+
+
+def atomic_csv(path, fieldnames, rows):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=path.stem + "_", suffix=".csv", dir=str(path.parent))
+    os.close(fd)
+    try:
+        with open(tmp, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
 
 
 def main():
@@ -27,55 +45,46 @@ def main():
         master = json.load(response)
 
     by_symbol = {}
+    candidates = {}
     exchange_counts = {}
     for item in master:
-        exchange_segment = str(item.get("exch_seg", "")).strip().upper()
-        exchange_counts[exchange_segment] = exchange_counts.get(exchange_segment, 0) + 1
-        tradingsymbol = str(item.get("symbol", "")).strip().upper()
+        segment = str(item.get("exch_seg", "")).strip().upper()
+        exchange_counts[segment] = exchange_counts.get(segment, 0) + 1
+        symbol = str(item.get("symbol", "")).strip().upper()
         token = str(item.get("token", "")).strip()
-        # Angel One master variants have used NSE and nse_cm for the cash segment.
-        if exchange_segment not in {"NSE", "NSE_CM"} or not token:
+        name = str(item.get("name", "")).strip().upper()
+        if segment not in NSE_SEGMENTS or not token:
             continue
-        if tradingsymbol.endswith("-EQ"):
-            base = tradingsymbol[:-3]
-            if base:
-                by_symbol.setdefault(base, token)
+        if symbol.endswith("-EQ"):
+            by_symbol.setdefault(symbol[:-3], token)
+        if symbol:
+            candidates.setdefault(symbol.split("-")[0], []).append((symbol, token, name))
 
+    valid = [s for s in symbols if s in by_symbol]
     missing = [s for s in symbols if s not in by_symbol]
-    if missing:
-        print("INSTRUMENT_MASTER_EXCHANGE_SEGMENTS | " + ", ".join(
-            f"{key or '<blank>'}:{value}" for key, value in sorted(exchange_counts.items())
-        ))
-        # Show only official-master candidates for diagnosis; never infer a token.
-        for symbol in missing:
-            candidates = []
-            for item in master:
-                seg = str(item.get("exch_seg", "")).strip().upper()
-                sym = str(item.get("symbol", "")).strip().upper()
-                name = str(item.get("name", "")).strip().upper()
-                if seg in {"NSE", "NSE_CM"} and (
-                    sym.startswith(symbol) or symbol in sym or name == symbol or symbol in name
-                ):
-                    candidates.append(
-                        f"{sym or '<blank>'}(token={str(item.get('token', '')).strip()},name={name or '<blank>'})"
-                    )
-            print(f"MASTER_CANDIDATES | {symbol} | " + ("; ".join(candidates[:12]) if candidates else "none"))
-        raise SystemExit("No verified NSE-EQ token found for: " + ", ".join(missing))
+    report_rows = []
+    for s in missing:
+        matches = candidates.get(s, [])
+        exact_non_eq = [x for x in matches if x[0].startswith(s + "-")]
+        if exact_non_eq:
+            detail = "; ".join(f"{sym} token={tok}" for sym, tok, _ in exact_non_eq[:10])
+            status = "FOUND_NON_EQ_SERIES"
+        else:
+            detail = "; ".join(f"{sym} token={tok}" for sym, tok, _ in matches[:10])
+            status = "NO_EXACT_NSE_EQ"
+        report_rows.append({"symbol": s, "status": status, "official_master_candidates": detail})
+    atomic_csv(REPORT_FILE, ["symbol", "status", "official_master_candidates"], report_rows)
 
     rows = [{"symbol": "NIFTY", "token": NIFTY_TOKEN, "exchange": "NSE"}]
-    rows.extend({"symbol": s, "token": by_symbol[s], "exchange": "NSE"} for s in symbols)
-    fd, tmp = tempfile.mkstemp(prefix="symbol_tokens_", suffix=".csv", dir=str(TOKEN_FILE.parent))
-    os.close(fd)
-    try:
-        with open(tmp, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=["symbol", "token", "exchange"])
-            writer.writeheader()
-            writer.writerows(rows)
-        os.replace(tmp, TOKEN_FILE)
-    finally:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-    print(f"VERIFIED_TOKEN_REFRESH_OK | index=NIFTY | stocks={len(symbols)} | total={len(rows)}")
+    rows.extend({"symbol": s, "token": by_symbol[s], "exchange": "NSE"} for s in valid)
+    if not valid:
+        raise SystemExit("No verified NSE-EQ symbols found; existing token file was not replaced.")
+    atomic_csv(TOKEN_FILE, ["symbol", "token", "exchange"], rows)
+
+    print(f"VERIFIED_TOKEN_REFRESH_OK | verified_stocks={len(valid)} | unresolved={len(missing)} | total_tokens={len(rows)}")
+    print(f"UNRESOLVED_REPORT={REPORT_FILE.relative_to(ROOT).as_posix()}")
+    if missing:
+        print("UNRESOLVED_SYMBOLS | " + ", ".join(missing))
     print("SCAN_UNIVERSE_SOURCE=config/scan_universe.csv")
 
 
