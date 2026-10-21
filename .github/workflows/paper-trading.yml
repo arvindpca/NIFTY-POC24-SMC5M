@@ -86,6 +86,8 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           PAPER_COST_BPS_PER_SIDE: "0"
+          PAPER_ALLOW_OFFSESSION_SCAN: "true"
+          SMARTAPI_MAX_RETRIES: "0"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -100,7 +102,7 @@ jobs:
           hard_stop=$(( $(date +%s) + 20400 ))   # GitHub job runtime limit; restart on next scheduled/manual run
           while true; do
             echo "=== cycle $(TZ=Asia/Kolkata date '+%F %T IST') ==="
-            timeout --signal=TERM --kill-after=15s 240s python -u -m app.main || echo "cycle failed or timed out after 240s (see log above); continuing"
+            timeout --signal=TERM --kill-after=15s 1200s python -u -m app.main || echo "cycle failed or timed out after 1200s (see log above); continuing"
             persist
             now=$(date +%s)
             if [ "$now" -ge "$hard_stop" ]; then break; fi
