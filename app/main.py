@@ -75,6 +75,27 @@ def stats_from_history():
     }
 
 
+def record_scan_diagnostic(cycle_id, symbol, stage, reason, detail=""):
+    """Append an auditable per-symbol status row for the latest scan cycle."""
+    path = DATA_DIR / "scan_diagnostics.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    exists = path.exists() and path.stat().st_size > 0
+    with path.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=[
+            "timestamp_ist", "cycle_id", "symbol", "stage", "reason", "detail"
+        ])
+        if not exists:
+            writer.writeheader()
+        writer.writerow({
+            "timestamp_ist": datetime.now(IST).isoformat(),
+            "cycle_id": cycle_id,
+            "symbol": symbol,
+            "stage": stage,
+            "reason": reason,
+            "detail": str(detail).replace("\\n", " ")[:500],
+        })
+
+
 def completed_15m(raw):
     d = original.prepare_symbol_from_15m(original.normalize_columns(raw))
     now = pd.Timestamp.now(tz=IST)
@@ -266,6 +287,8 @@ def main():
     state = load_state()
     raw_by_symbol = {}
     frames = {}
+    cycle_id = now.strftime("%Y%m%d-%H%M%S")
+    diagnostic_counts = {"fetch_ok": 0, "fetch_failed": 0, "no_new_candle": 0, "no_signal": 0, "duplicate_signal": 0, "signal_queued": 0, "evaluation_failed": 0, "invalid_frame": 0}
 
     # Rate-limit-safe rotating scan: fetch NIFTY and positions requiring attention
     # every cycle, then a bounded stock batch. Avoid a 177-symbol burst every run.
@@ -311,6 +334,8 @@ def main():
             raw_by_symbol[symbol] = raw
             frames[symbol] = completed_15m(raw)
             fetched_count += 1
+            diagnostic_counts["fetch_ok"] += 1
+            record_scan_diagnostic(cycle_id, symbol, "FETCH", "OK", f"cache={cache_mode}; rows={len(raw)}; new_rows={fetched_rows}; completed_bars={len(frames[symbol])}")
             cache_modes[cache_mode] = cache_modes.get(cache_mode, 0) + 1
             print(
                 f"CANDLE_FETCH_OK | timeframe=15M_DIRECT | symbol={symbol} | "
@@ -318,11 +343,15 @@ def main():
                 f"seconds={time.monotonic()-symbol_started:.1f}"
             )
         except SmartAPIRateLimitError as exc:
+            diagnostic_counts["fetch_failed"] += 1
+            record_scan_diagnostic(cycle_id, symbol, "FETCH", "RATE_LIMIT", exc)
             log_event("ERROR", "SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER", f"{symbol}: {exc}")
             print(f"RATE LIMIT CIRCUIT BREAKER | symbol={symbol} | stopping this scan to protect the API: {exc}")
             rate_limit_hit = True
             break
         except Exception as exc:
+            diagnostic_counts["fetch_failed"] += 1
+            record_scan_diagnostic(cycle_id, symbol, "FETCH", "FAILED", exc)
             log_event("ERROR", "CANDLE_FETCH_FAILED", f"{symbol}: {exc}")
             print(f"Data unavailable for {symbol}; no new signal from this symbol: {exc}")
     if "NIFTY" not in raw_by_symbol:
@@ -335,6 +364,7 @@ def main():
             api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
         except Exception:
             pass
+        record_scan_diagnostic(cycle_id, "NIFTY", "CYCLE", "ABORTED_NIFTY_DATA_UNAVAILABLE")
         print("CYCLE ABORTED SAFELY | NIFTY data unavailable; no signals evaluated.")
         return
     nifty_raw = raw_by_symbol["NIFTY"]
@@ -342,10 +372,18 @@ def main():
     close_positions(state, frames)
 
     for symbol, raw in raw_by_symbol.items():
-        if symbol == "NIFTY" or symbol not in frames or frames[symbol].empty:
+        if symbol == "NIFTY":
+            continue
+        if symbol not in frames or frames[symbol].empty:
+            diagnostic_counts["invalid_frame"] += 1
+            record_scan_diagnostic(cycle_id, symbol, "STRATEGY", "NO_COMPLETED_CANDLES")
+            print(f"STOCK SKIPPED | {symbol} | reason=NO_COMPLETED_CANDLES")
             continue
         candle_key = frames[symbol].iloc[-1]["timestamp"].isoformat()
         if state["last_candle"].get(symbol) == candle_key:
+            diagnostic_counts["no_new_candle"] += 1
+            record_scan_diagnostic(cycle_id, symbol, "STRATEGY", "SKIP_NO_NEW_CANDLE", f"latest_completed_candle={candle_key}")
+            print(f"STOCK SKIPPED | {symbol} | reason=NO_NEW_CANDLE | candle={candle_key}")
             continue
         try:
             signal = get_latest_signal(symbol, raw, nifty_raw)
@@ -353,15 +391,27 @@ def main():
             # the next scheduled run must be allowed to retry the same candle.
             state["last_candle"][symbol] = candle_key
             if not signal:
+                diagnostic_counts["no_signal"] += 1
+                record_scan_diagnostic(cycle_id, symbol, "STRATEGY", "NO_SIGNAL", f"evaluated_candle={candle_key}; no setup")
+                print(f"STOCK CHECKED | {symbol} | result=NO_SIGNAL | candle={candle_key}")
                 continue
             signal_key = f"{symbol}|{signal['side']}|{signal['signal_time']}"
             if signal_key in state["seen_signals"] or signal_key in state.get("pending_entries", {}):
+                diagnostic_counts["duplicate_signal"] += 1
+                record_scan_diagnostic(cycle_id, symbol, "STRATEGY", "DUPLICATE_SIGNAL", signal_key)
+                print(f"STOCK SKIPPED | {symbol} | reason=DUPLICATE_SIGNAL | key={signal_key}")
                 continue
             state.setdefault("seen_signals", []).append(signal_key)
             state["seen_signals"] = state["seen_signals"][-5000:]
             state.setdefault("pending_entries", {})[signal_key] = signal
+            diagnostic_counts["signal_queued"] += 1
+            record_scan_diagnostic(cycle_id, symbol, "STRATEGY", "SIGNAL_QUEUED", signal_key)
+            print(f"SIGNAL QUEUED | {symbol} | side={signal['side']} | signal_time={signal['signal_time']}")
             log_event("INFO", "PAPER_SIGNAL_QUEUED", signal_key)
         except Exception as exc:
+            diagnostic_counts["evaluation_failed"] += 1
+            record_scan_diagnostic(cycle_id, symbol, "STRATEGY", "EVALUATION_FAILED", exc)
+            print(f"STRATEGY ERROR | {symbol} | reason=EVALUATION_FAILED | {exc}")
             log_event("ERROR", "SIGNAL_EVALUATION_FAILED", f"{symbol}: {exc}")
     # Process again so a signal with an available immediate next candle is handled.
     process_pending(state, frames)
@@ -376,6 +426,7 @@ def main():
         api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
     except Exception:
         pass
+    print(f"SCAN DIAGNOSTICS | cycle_id={cycle_id} | " + " | ".join(f"{k}={v}" for k, v in diagnostic_counts.items()))
     print(
         f"Paper cycle complete {now.isoformat()} | selected={len(pending_symbols)} | "
         f"fetched_ok={fetched_count} | cache_initial={cache_modes.get('INITIAL_HISTORY', 0)} | "
