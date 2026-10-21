@@ -76,7 +76,7 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
-      - name: Live paper-only loop (every 5 min until 15:40 IST)
+      - name: Continuous paper-only scan (every 5 min, temporary all-hours mode)
         env:
           PAPER_ONLY: "true"
           ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
@@ -97,19 +97,17 @@ jobs:
               git push -q origin HEAD:main || echo "push failed; will retry next cycle"
             fi
           }
-          market_end=$(TZ=Asia/Kolkata date -d "15:40" +%s)
-          hard_stop=$(( $(date +%s) + 20400 ))   # 340 min, below the job timeout
-          dow=$(TZ=Asia/Kolkata date +%u)
+          hard_stop=$(( $(date +%s) + 20400 ))   # GitHub job runtime limit; restart on next scheduled/manual run
           while true; do
             echo "=== cycle $(TZ=Asia/Kolkata date '+%F %T IST') ==="
             timeout --signal=TERM --kill-after=15s 240s python -u -m app.main || echo "cycle failed or timed out after 240s (see log above); continuing"
             persist
             now=$(date +%s)
-            if [ "$dow" -ge 6 ] || [ "$now" -ge "$market_end" ] || [ "$now" -ge "$hard_stop" ]; then break; fi
+            if [ "$now" -ge "$hard_stop" ]; then break; fi
             next=$(( (now / 300 + 1) * 300 + 20 ))   # next 5-min boundary + 20s
             sleep $(( next - now ))
           done
-          echo "Live loop finished."
+          echo "Temporary all-hours scan loop finished at GitHub Actions runtime limit."
 
       - name: Persist paper state and audit CSVs
         if: always()
