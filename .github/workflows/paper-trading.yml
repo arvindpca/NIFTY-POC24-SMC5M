@@ -1,9 +1,12 @@
 name: Strategy B Paper Trading
 
 on:
-  # Live-data paper trading only. The Python app gates polling to NSE hours (IST).
+  # Scheduled paper-only cycles from 09:00 to 15:40 IST, Monday-Friday.
+  # GitHub cron is UTC; these three entries map to 09:00-15:40 IST every 5 minutes.
   schedule:
-    - cron: "*/15 3-10 * * 1-5"
+    - cron: "30,35,40,45,50,55 3 * * 1-5"
+    - cron: "*/5 4-9 * * 1-5"
+    - cron: "0,5,10 10 * * 1-5"
   workflow_dispatch:
 
 permissions:
