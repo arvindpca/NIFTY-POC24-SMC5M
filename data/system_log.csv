@@ -53,3 +53,11 @@ timestamp,level,event,detail
 2026-10-21T04:42:37.367174+00:00,ERROR,CANDLE_FETCH_FAILED,TATASTEEL: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-21T04:42:38.030529+00:00,ERROR,CANDLE_FETCH_FAILED,TCS: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-21T04:42:39.401633+00:00,ERROR,CANDLE_FETCH_FAILED,TITAN: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T04:50:52.611013+00:00,ERROR,CANDLE_FETCH_FAILED,ADANIENT: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T04:51:14.225789+00:00,ERROR,CANDLE_FETCH_FAILED,ASIANPAINT: SmartAPI returned no candle data for token 236: Too many requests
+2026-10-21T04:51:34.763062+00:00,ERROR,CANDLE_FETCH_FAILED,BAJAJ-AUTO: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T04:51:52.999901+00:00,ERROR,CANDLE_FETCH_FAILED,BAJFINANCE: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T04:52:22.456248+00:00,ERROR,CANDLE_FETCH_FAILED,CIPLA: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T04:53:02.074379+00:00,ERROR,CANDLE_FETCH_FAILED,ETERNAL: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T04:53:22.057149+00:00,ERROR,CANDLE_FETCH_FAILED,HDFCLIFE: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T04:54:04.023471+00:00,ERROR,CANDLE_FETCH_FAILED,ICICIBANK: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
