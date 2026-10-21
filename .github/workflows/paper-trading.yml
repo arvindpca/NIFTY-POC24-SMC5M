@@ -102,7 +102,7 @@ jobs:
           dow=$(TZ=Asia/Kolkata date +%u)
           while true; do
             echo "=== cycle $(TZ=Asia/Kolkata date '+%F %T IST') ==="
-            python -m app.main || echo "cycle failed (see log above); continuing"
+            timeout --signal=TERM --kill-after=15s 240s python -u -m app.main || echo "cycle failed or timed out after 240s (see log above); continuing"
             persist
             now=$(date +%s)
             if [ "$dow" -ge 6 ] || [ "$now" -ge "$market_end" ] || [ "$now" -ge "$hard_stop" ]; then break; fi
