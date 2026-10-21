@@ -14,7 +14,12 @@ IST = ZoneInfo("Asia/Kolkata")
 MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "12.0"))
 MAX_RETRIES = int(os.getenv("SMARTAPI_MAX_RETRIES", "1"))
 BACKOFF_BASE_SEC = float(os.getenv("SMARTAPI_BACKOFF_BASE_SEC", "30.0"))
-RATE_LIMIT_COOLDOWN_SEC = float(os.getenv("SMARTAPI_RATE_LIMIT_COOLDOWN_SEC", "90.0"))
+RATE_LIMIT_COOLDOWN_SEC = float(os.getenv("SMARTAPI_RATE_LIMIT_COOLDOWN_SEC", "300.0"))
+
+
+class SmartAPIRateLimitError(RuntimeError):
+    """Raised when Angel One rejects historical-data requests due to rate limits."""
+
 _last_call_ts = 0.0
 
 
@@ -43,9 +48,9 @@ def _get_candle_data_with_retry(api, params, token):
                 if attempt < MAX_RETRIES:
                     time.sleep(BACKOFF_BASE_SEC * (2 ** attempt))
                     continue
-                # Cool down the whole loop rather than repeatedly hammering the API.
-                time.sleep(RATE_LIMIT_COOLDOWN_SEC)
-                raise RuntimeError(f"SmartAPI rate limit for token {token}; cooled down {RATE_LIMIT_COOLDOWN_SEC}s: {last_error}") from exc
+                # Stop this scan immediately. The caller must not continue hammering
+                # the remaining symbols after an account/IP-level rate-limit response.
+                raise SmartAPIRateLimitError(f"SmartAPI rate limit for token {token}: {last_error}") from exc
             raise
         if response and response.get("status") and response.get("data"):
             return response
@@ -54,8 +59,7 @@ def _get_candle_data_with_retry(api, params, token):
             if attempt < MAX_RETRIES:
                 time.sleep(BACKOFF_BASE_SEC * (2 ** attempt))
                 continue
-            time.sleep(RATE_LIMIT_COOLDOWN_SEC)
-            break
+            raise SmartAPIRateLimitError(f"SmartAPI rate limit for token {token}: {last_error}")
         break
     raise RuntimeError(f"SmartAPI returned no candle data for token {token}: {last_error}")
 
