@@ -97,3 +97,12 @@ timestamp,level,event,detail
 2026-10-21T06:21:40.882842+00:00,ERROR,CANDLE_FETCH_FAILED,SHRIRAMFIN: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-21T06:21:40.882891+00:00,ERROR,CANDLE_FETCH_FAILED,ULTRACEMCO: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-21T06:30:06.579292+00:00,ERROR,CANDLE_FETCH_FAILED,DRREDDY: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T06:52:02.279568+00:00,ERROR,CANDLE_FETCH_FAILED,ADANIENT: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T06:52:02.279724+00:00,ERROR,CANDLE_FETCH_FAILED,BAJAJFINSV: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T06:52:02.279792+00:00,ERROR,CANDLE_FETCH_FAILED,BHARTIARTL: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T06:52:02.279848+00:00,ERROR,CANDLE_FETCH_FAILED,GRASIM: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T06:52:02.279900+00:00,ERROR,CANDLE_FETCH_FAILED,HINDUNILVR: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T06:52:02.279951+00:00,ERROR,CANDLE_FETCH_FAILED,INDUSINDBK: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T06:52:02.280002+00:00,ERROR,CANDLE_FETCH_FAILED,JIOFIN: SmartAPI returned no candle data for token 18143: Too many requests
+2026-10-21T06:52:02.280052+00:00,ERROR,CANDLE_FETCH_FAILED,NTPC: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T06:52:02.280100+00:00,ERROR,CANDLE_FETCH_FAILED,TECHM: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
