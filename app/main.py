@@ -82,6 +82,50 @@ def completed_15m(raw):
     return d[d["timestamp"] <= now.floor("15min")].sort_values("timestamp").reset_index(drop=True)
 
 
+def load_or_update_candle_cache(api, symbol, item):
+    """Keep direct 15m candles locally and request only data newer than the cache."""
+    cache_dir = DATA_DIR / "candle_cache_15m"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_path = cache_dir / f"{symbol}.csv"
+    cached = None
+    if cache_path.exists():
+        try:
+            cached = original.normalize_columns(pd.read_csv(cache_path))
+            if cached is None or len(cached) < 80:
+                cached = None
+        except Exception as exc:
+            log_event("WARNING", "CANDLE_CACHE_READ_FAILED", f"{symbol}: {exc}")
+            cached = None
+
+    if cached is None:
+        fetched = fetch_15m_candles(api, item["exchange"], item["token"], lookback_days=10)
+        mode = "INITIAL_HISTORY"
+    else:
+        last_ts = cached["timestamp"].max()
+        fetched = fetch_15m_candles(
+            api, item["exchange"], item["token"], from_timestamp=last_ts
+        )
+        mode = "INCREMENTAL"
+
+    if cached is not None:
+        combined = pd.concat([cached, fetched], ignore_index=True)
+    else:
+        combined = fetched.copy()
+    combined = original.normalize_columns(combined)
+    if combined is None or combined.empty:
+        raise RuntimeError(f"{symbol}: merged 15M cache is empty or invalid")
+    combined = combined.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
+    # Bound cache size while preserving ample indicator/POC warm-up history.
+    cutoff = pd.Timestamp.now(tz=IST) - pd.Timedelta(days=10)
+    combined = combined[combined["timestamp"] >= cutoff].reset_index(drop=True)
+    if len(combined) < 80:
+        raise RuntimeError(f"{symbol}: only {len(combined)} completed 15M bars after cache merge")
+    tmp_path = cache_path.with_suffix(".tmp")
+    combined.to_csv(tmp_path, index=False)
+    tmp_path.replace(cache_path)
+    return combined, mode, len(fetched)
+
+
 def close_positions(state, latest_by_symbol):
     open_positions = state["open_positions"]
     for trade_id, pos in list(open_positions.items()):
@@ -253,12 +297,22 @@ def main():
     pending_symbols = [(symbol, tokens[symbol]) for symbol in selected]
 
     rate_limit_hit = False
+    scan_started = time.monotonic()
+    fetched_count = 0
+    cache_modes = {"INITIAL_HISTORY": 0, "INCREMENTAL": 0}
     for symbol, item in pending_symbols:
+        symbol_started = time.monotonic()
         try:
-            raw = fetch_15m_candles(api, item["exchange"], item["token"])
+            raw, cache_mode, fetched_rows = load_or_update_candle_cache(api, symbol, item)
             raw_by_symbol[symbol] = raw
             frames[symbol] = completed_15m(raw)
-            print(f"CANDLE_FETCH_OK | timeframe=15M_DIRECT | symbol={symbol} | rows={len(raw)}")
+            fetched_count += 1
+            cache_modes[cache_mode] = cache_modes.get(cache_mode, 0) + 1
+            print(
+                f"CANDLE_FETCH_OK | timeframe=15M_DIRECT | symbol={symbol} | "
+                f"cache={cache_mode} | cached_rows={len(raw)} | new_rows={fetched_rows} | "
+                f"seconds={time.monotonic()-symbol_started:.1f}"
+            )
         except SmartAPIRateLimitError as exc:
             log_event("ERROR", "SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER", f"{symbol}: {exc}")
             print(f"RATE LIMIT CIRCUIT BREAKER | symbol={symbol} | stopping this scan to protect the API: {exc}")
@@ -318,7 +372,13 @@ def main():
         api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
     except Exception:
         pass
-    print(f"Paper cycle complete {now.isoformat()} | open={len(state['open_positions'])} | pending={len(state.get('pending_entries', {}))}")
+    print(
+        f"Paper cycle complete {now.isoformat()} | selected={len(pending_symbols)} | "
+        f"fetched_ok={fetched_count} | cache_initial={cache_modes.get('INITIAL_HISTORY', 0)} | "
+        f"cache_incremental={cache_modes.get('INCREMENTAL', 0)} | "
+        f"elapsed_sec={time.monotonic()-scan_started:.1f} | "
+        f"open={len(state['open_positions'])} | pending={len(state.get('pending_entries', {}))}"
+    )
 
 
 if __name__ == "__main__":
