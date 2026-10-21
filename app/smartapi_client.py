@@ -9,11 +9,12 @@ from SmartApi import SmartConnect
 
 IST = ZoneInfo("Asia/Kolkata")
 
-# Angel One rate-limits getCandleData ("Access denied because of exceeding access
-# rate" / "Too many requests"). Space calls out and retry with backoff.
-MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "3.5"))
-MAX_RETRIES = int(os.getenv("SMARTAPI_MAX_RETRIES", "2"))
-BACKOFF_BASE_SEC = float(os.getenv("SMARTAPI_BACKOFF_BASE_SEC", "5.0"))
+# Conservative historical-candle pacing. Angel One may enforce account-level
+# limits stricter than the per-second limits documented for other endpoints.
+MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "12.0"))
+MAX_RETRIES = int(os.getenv("SMARTAPI_MAX_RETRIES", "1"))
+BACKOFF_BASE_SEC = float(os.getenv("SMARTAPI_BACKOFF_BASE_SEC", "30.0"))
+RATE_LIMIT_COOLDOWN_SEC = float(os.getenv("SMARTAPI_RATE_LIMIT_COOLDOWN_SEC", "90.0"))
 _last_call_ts = 0.0
 
 
@@ -27,7 +28,7 @@ def _throttle():
 
 def _is_rate_limited(text):
     t = str(text).lower()
-    return "exceeding access rate" in t or "too many requests" in t or "access denied" in t
+    return "exceeding access rate" in t or "too many requests" in t or "access denied" in t or "ab1021" in t
 
 
 def _get_candle_data_with_retry(api, params, token):
@@ -36,18 +37,25 @@ def _get_candle_data_with_retry(api, params, token):
         _throttle()
         try:
             response = api.getCandleData(params)
-        except Exception as exc:  # SmartApi raises when the rate-limit body is not JSON
+        except Exception as exc:  # SmartApi can raise while parsing a rate-limit HTML/text body
             last_error = str(exc)
-            if _is_rate_limited(last_error) and attempt < MAX_RETRIES:
-                time.sleep(BACKOFF_BASE_SEC * (2 ** attempt))
-                continue
+            if _is_rate_limited(last_error):
+                if attempt < MAX_RETRIES:
+                    time.sleep(BACKOFF_BASE_SEC * (2 ** attempt))
+                    continue
+                # Cool down the whole loop rather than repeatedly hammering the API.
+                time.sleep(RATE_LIMIT_COOLDOWN_SEC)
+                raise RuntimeError(f"SmartAPI rate limit for token {token}; cooled down {RATE_LIMIT_COOLDOWN_SEC}s: {last_error}") from exc
             raise
         if response and response.get("status") and response.get("data"):
             return response
         last_error = response.get("message") if response else "empty response"
-        if _is_rate_limited(last_error) and attempt < MAX_RETRIES:
-            time.sleep(BACKOFF_BASE_SEC * (2 ** attempt))
-            continue
+        if _is_rate_limited(last_error):
+            if attempt < MAX_RETRIES:
+                time.sleep(BACKOFF_BASE_SEC * (2 ** attempt))
+                continue
+            time.sleep(RATE_LIMIT_COOLDOWN_SEC)
+            break
         break
     raise RuntimeError(f"SmartAPI returned no candle data for token {token}: {last_error}")
 
