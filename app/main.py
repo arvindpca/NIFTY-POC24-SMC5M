@@ -201,7 +201,9 @@ def main():
     if os.getenv("PAPER_ONLY", "true").strip().lower() != "true":
         raise RuntimeError("Safety stop: PAPER_ONLY must be true.")
     now = datetime.now(IST)
-    if now.weekday() >= 5 or now.time() < datetime.strptime("09:15", "%H:%M").time() or now.time() > datetime.strptime("15:35", "%H:%M").time():
+    outside_session = now.weekday() >= 5 or now.time() < datetime.strptime("09:15", "%H:%M").time() or now.time() > datetime.strptime("15:35", "%H:%M").time()
+    allow_offsession_scan = os.getenv("PAPER_ALLOW_OFFSESSION_SCAN", "false").strip().lower() == "true"
+    if outside_session and not allow_offsession_scan:
         print(f"Outside NSE session: {now.isoformat()}; no live polling.")
         # Still permit an explicitly manual off-session run to create the
         # workbook from the current persisted CSVs. Do not authenticate or poll data.
@@ -213,6 +215,8 @@ def main():
             print(f"Excel export failed: {exc}")
             raise
         return
+    if outside_session and allow_offsession_scan:
+        print(f"OFF-SESSION DIAGNOSTIC SCAN ENABLED | {now.isoformat()} | historical candles only; no real orders.")
     tokens = load_tokens()
     api = create_data_client()
     state = load_state()
