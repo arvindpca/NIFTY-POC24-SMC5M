@@ -272,7 +272,11 @@ def main():
     # SmartAPI request pacing is enforced by smartapi_client; the cursor survives
     # cycles through paper_state.json so the stock universe rotates fairly.
     universe = [s for s in tokens if s != "NIFTY"]
-    batch_size = max(1, min(int(os.getenv("PAPER_SCAN_BATCH_SIZE", "15")), 25))
+    # Aim to cover the entire verified universe in each 5-minute cycle.
+    # At 0.45s pacing, 175 serial calls need ~79s of pacing time; response time
+    # and strategy processing are measured by elapsed_sec. The rate-limit
+    # circuit breaker remains enabled and stops the cycle if Angel rejects calls.
+    batch_size = max(1, min(int(os.getenv("PAPER_SCAN_BATCH_SIZE", "200")), 200))
     cursor = int(state.get("scan_cursor", 0) or 0) % max(1, len(universe))
     if universe:
         rotating = [universe[(cursor + i) % len(universe)] for i in range(min(batch_size, len(universe)))]
