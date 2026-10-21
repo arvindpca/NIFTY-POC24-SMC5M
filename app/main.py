@@ -219,18 +219,17 @@ def main():
     raw_by_symbol = {}
     frames = {}
 
-    # Angel One throttles historical candle requests. Scan a small rotating
-    # batch each cycle instead of requesting all 51 instruments every 5 minutes.
-    # Always include NIFTY plus symbols with open/pending trades so risk management
-    # is prioritised. The rotation index persists in paper_state.json.
+    # Angel One throttles historical candle requests. Fetch the complete
+    # universe every 15 minutes (not every 5-minute loop); between full scans,
+    # fetch NIFTY plus symbols with open/pending trades. This preserves 15-minute
+    # signal coverage while avoiding 51 historical requests on every loop.
     universe = [s for s in tokens if s != "NIFTY"]
-    rotation_index = int(state.get("scan_rotation_index", 0)) % max(len(universe), 1)
-    batch_size = int(os.getenv("PAPER_SCAN_BATCH_SIZE", "5"))
-    rotating = []
-    if universe:
-        rotating = [universe[(rotation_index + i) % len(universe)]
-                    for i in range(min(batch_size, len(universe)))]
-        state["scan_rotation_index"] = (rotation_index + len(rotating)) % len(universe)
+    scan_interval = int(os.getenv("PAPER_FULL_SCAN_INTERVAL_SEC", "900"))
+    last_full_scan = float(state.get("last_full_scan_epoch", 0) or 0)
+    full_scan_due = (time.time() - last_full_scan) >= scan_interval
+    rotating = universe if full_scan_due else []
+    if full_scan_due:
+        state["last_full_scan_epoch"] = time.time()
     priority = []
     for pos in state.get("open_positions", {}).values():
         priority.append(str(pos.get("symbol", "")).upper())
@@ -240,6 +239,7 @@ def main():
     for symbol in ["NIFTY", *priority, *rotating]:
         if symbol in tokens and symbol not in selected:
             selected.append(symbol)
+    print(f"SCAN PLAN | full_scan={full_scan_due} | universe={len(universe)} | selected={len(selected)} | symbols={','.join(selected)}")
     pending_symbols = [(symbol, tokens[symbol]) for symbol in selected]
     print(f"SCAN PLAN | universe={len(universe)} | selected={len(pending_symbols)} | symbols={','.join(selected)}")
 
