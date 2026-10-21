@@ -1,4 +1,4 @@
-""""Refresh the paper scanner's NSE equity tokens from Angel One's official instrument master.
+"""Refresh the paper scanner's NSE equity tokens from Angel One's official instrument master.
 
 This is for paper-only market-data scanning. It never places orders and never guesses tokens.
 """
@@ -33,8 +33,7 @@ def main():
         exchange_counts[exchange_segment] = exchange_counts.get(exchange_segment, 0) + 1
         tradingsymbol = str(item.get("symbol", "")).strip().upper()
         token = str(item.get("token", "")).strip()
-        # Angel One's instrument master commonly labels cash equities as "NSE".
-        # Accept "NSE_CM" too for compatible master-file variants.
+        # Angel One master variants have used NSE and nse_cm for the cash segment.
         if exchange_segment not in {"NSE", "NSE_CM"} or not token:
             continue
         if tradingsymbol.endswith("-EQ"):
@@ -47,6 +46,20 @@ def main():
         print("INSTRUMENT_MASTER_EXCHANGE_SEGMENTS | " + ", ".join(
             f"{key or '<blank>'}:{value}" for key, value in sorted(exchange_counts.items())
         ))
+        # Show only official-master candidates for diagnosis; never infer a token.
+        for symbol in missing:
+            candidates = []
+            for item in master:
+                seg = str(item.get("exch_seg", "")).strip().upper()
+                sym = str(item.get("symbol", "")).strip().upper()
+                name = str(item.get("name", "")).strip().upper()
+                if seg in {"NSE", "NSE_CM"} and (
+                    sym.startswith(symbol) or symbol in sym or name == symbol or symbol in name
+                ):
+                    candidates.append(
+                        f"{sym or '<blank>'}(token={str(item.get('token', '')).strip()},name={name or '<blank>'})"
+                    )
+            print(f"MASTER_CANDIDATES | {symbol} | " + ("; ".join(candidates[:12]) if candidates else "none"))
         raise SystemExit("No verified NSE-EQ token found for: " + ", ".join(missing))
 
     rows = [{"symbol": "NIFTY", "token": NIFTY_TOKEN, "exchange": "NSE"}]
