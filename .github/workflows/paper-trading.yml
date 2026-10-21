@@ -22,7 +22,8 @@ permissions:
 
 concurrency:
   group: strategy-b-paper-trading
-  cancel-in-progress: false
+  # Replace a stuck/older loop with the newest requested run instead of queueing indefinitely.
+  cancel-in-progress: true
 
 jobs:
   paper-trading:
