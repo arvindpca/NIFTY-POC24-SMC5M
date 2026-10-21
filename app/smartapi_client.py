@@ -11,7 +11,7 @@ IST = ZoneInfo("Asia/Kolkata")
 
 # Angel One rate-limits getCandleData ("Access denied because of exceeding access
 # rate" / "Too many requests"). Space calls out and retry with backoff.
-MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "1.0"))
+MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "1.5"))
 MAX_RETRIES = int(os.getenv("SMARTAPI_MAX_RETRIES", "3"))
 BACKOFF_BASE_SEC = float(os.getenv("SMARTAPI_BACKOFF_BASE_SEC", "2.0"))
 _last_call_ts = 0.0

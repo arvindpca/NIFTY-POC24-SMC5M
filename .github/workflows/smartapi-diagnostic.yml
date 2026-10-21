@@ -14,6 +14,11 @@ on:
 permissions:
   contents: read
 
+# Share one API key/rate limit with paper trading: never run both at once.
+concurrency:
+  group: strategy-b-paper-trading
+  cancel-in-progress: false
+
 jobs:
   diagnostic:
     runs-on: ubuntu-24.04
