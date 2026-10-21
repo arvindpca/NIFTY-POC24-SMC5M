@@ -3,8 +3,8 @@ name: Strategy B Daily Paper Summary
 on:
   workflow_dispatch:
   schedule:
-    # 16:15 India Standard Time, Monday-Friday (UTC is 10:45).
-    - cron: "45 10 * * 1-5"
+    # 16:00 India Standard Time, Monday-Friday (UTC is 10:30).
+    - cron: "30 10 * * 1-5"
 
 permissions:
   contents: read
