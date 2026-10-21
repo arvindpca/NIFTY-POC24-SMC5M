@@ -29,6 +29,14 @@ jobs:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Restore 15-minute candle cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data/candle_cache_15m
+          key: candle-cache-15m-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            candle-cache-15m-${{ github.ref_name }}-
+
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
@@ -106,6 +114,13 @@ jobs:
             sleep $(( next - now ))
           done
           echo "Temporary all-hours scan loop finished at GitHub Actions runtime limit."
+
+      - name: Save 15-minute candle cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/candle_cache_15m
+          key: candle-cache-15m-${{ github.ref_name }}-${{ github.run_id }}
 
       - name: Persist paper state, verified token master, and unresolved-symbol report
         if: always()
