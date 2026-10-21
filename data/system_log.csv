@@ -114,3 +114,5 @@ timestamp,level,event,detail
 2026-10-21T07:01:36.386125+00:00,ERROR,CANDLE_FETCH_FAILED,SHRIRAMFIN: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-21T07:01:36.386176+00:00,ERROR,CANDLE_FETCH_FAILED,TRENT: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-21T07:01:36.386225+00:00,ERROR,CANDLE_FETCH_FAILED,WIPRO: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T07:11:35.892333+00:00,ERROR,CANDLE_FETCH_FAILED,AXISBANK: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T07:11:35.892537+00:00,ERROR,CANDLE_FETCH_FAILED,SHRIRAMFIN: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
