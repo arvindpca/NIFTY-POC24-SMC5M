@@ -104,3 +104,32 @@ def fetch_5m_candles(api, exchange, token, lookback_days=5):
     if len(df) < 120:
         raise RuntimeError(f"Insufficient 5-minute history ({len(df)} bars) for warm-up and 24h POC.")
     return df.reset_index(drop=True)
+
+
+def fetch_15m_candles(api, exchange, token, lookback_days=10):
+    """Fetch direct 15-minute candles; do not build them from 5-minute data."""
+    now = datetime.now(IST)
+    start = now - timedelta(days=lookback_days)
+    params = {
+        "exchange": str(exchange),
+        "symboltoken": str(token),
+        "interval": "FIFTEEN_MINUTE",
+        "fromdate": start.strftime("%Y-%m-%d %H:%M"),
+        "todate": now.strftime("%Y-%m-%d %H:%M"),
+    }
+    response = _get_candle_data_with_retry(api, params, token)
+    df = pd.DataFrame(response["data"], columns=["timestamp", "open", "high", "low", "close", "volume"])
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+    if df["timestamp"].dt.tz is None:
+        df["timestamp"] = df["timestamp"].dt.tz_localize(IST)
+    else:
+        df["timestamp"] = df["timestamp"].dt.tz_convert(IST)
+    for col in ["open", "high", "low", "close", "volume"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.dropna(subset=["timestamp", "open", "high", "low", "close"])
+    df = df.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
+    # Angel One timestamps are treated as candle-start labels; discard forming bars.
+    df = df[df["timestamp"] + pd.Timedelta(minutes=15) <= pd.Timestamp.now(tz=IST)]
+    if len(df) < 80:
+        raise RuntimeError(f"Insufficient completed 15-minute history ({len(df)} bars) for strategy warm-up.")
+    return df.reset_index(drop=True)
