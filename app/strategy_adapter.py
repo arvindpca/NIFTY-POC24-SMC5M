@@ -111,14 +111,14 @@ def _latest_setup_signal(df, nifty_trend):
     return None
 
 
-def get_latest_signal(symbol, raw_5m, nifty_5m):
-    """Return a signal only for the newest completed 15m candle, or None."""
-    stock = original.normalize_columns(raw_5m)
-    nifty = original.normalize_columns(nifty_5m)
+def get_latest_signal(symbol, raw_15m, nifty_15m):
+    """Return a signal only for the newest completed direct 15m candle, or None."""
+    stock = original.normalize_columns(raw_15m)
+    nifty = original.normalize_columns(nifty_15m)
     if stock is None or nifty is None:
         return None
-    stock15 = original.prepare_symbol(stock)
-    nifty15 = original.prepare_symbol(nifty)
+    stock15 = original.prepare_symbol_from_15m(stock)
+    nifty15 = original.prepare_symbol_from_15m(nifty)
     nifty_trend = nifty15[["timestamp", "stock_htf_trend"]].rename(
         columns={"stock_htf_trend": "nifty_trend"}
     )
