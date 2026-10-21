@@ -83,6 +83,7 @@ jobs:
       - name: Continuous paper-only scan (every 5 min, temporary all-hours mode)
         env:
           PAPER_ONLY: "true"
+          PAPER_SCAN_BATCH_SIZE: "200"
           ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
           ANGEL_CLIENT_CODE: ${{ secrets.ANGEL_CLIENT_CODE }}
           ANGEL_PIN: ${{ secrets.ANGEL_PIN }}
