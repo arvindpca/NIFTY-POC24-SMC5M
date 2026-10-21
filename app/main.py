@@ -13,7 +13,7 @@ import pandas as pd
 
 from app.config import validate_config
 from app.notifications import send_telegram, entry_alert, close_alert
-from app.smartapi_client import create_data_client, fetch_5m_candles, SmartAPIRateLimitError
+from app.smartapi_client import create_data_client, fetch_15m_candles, SmartAPIRateLimitError
 from app.storage import load_state, save_state, save_trade, log_event, export_excel, DATA_DIR, FIELDS
 from app.strategy_adapter import get_latest_signal
 from app.rules import exit_decision, is_stale_entry, target_for
@@ -76,7 +76,7 @@ def stats_from_history():
 
 
 def completed_15m(raw):
-    d = original.prepare_symbol(original.normalize_columns(raw))
+    d = original.prepare_symbol_from_15m(original.normalize_columns(raw))
     now = pd.Timestamp.now(tz=IST)
     # END-labelled 15m bars only; ensure the bar has actually ended.
     return d[d["timestamp"] <= now.floor("15min")].sort_values("timestamp").reset_index(drop=True)
@@ -250,10 +250,10 @@ def main():
     rate_limit_hit = False
     for symbol, item in pending_symbols:
         try:
-            raw = fetch_5m_candles(api, item["exchange"], item["token"])
+            raw = fetch_15m_candles(api, item["exchange"], item["token"])
             raw_by_symbol[symbol] = raw
             frames[symbol] = completed_15m(raw)
-            print(f"CANDLE_FETCH_OK | symbol={symbol} | rows={len(raw)}")
+            print(f"CANDLE_FETCH_OK | timeframe=15M_DIRECT | symbol={symbol} | rows={len(raw)}")
         except SmartAPIRateLimitError as exc:
             log_event("ERROR", "SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER", f"{symbol}: {exc}")
             print(f"RATE LIMIT CIRCUIT BREAKER | symbol={symbol} | stopping this scan to protect the API: {exc}")
