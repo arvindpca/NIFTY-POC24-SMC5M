@@ -62,3 +62,4 @@ timestamp,level,event,detail
 2026-10-21T04:53:22.057149+00:00,ERROR,CANDLE_FETCH_FAILED,HDFCLIFE: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-21T04:54:04.023471+00:00,ERROR,CANDLE_FETCH_FAILED,ICICIBANK: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-21T05:04:46.836693+00:00,ERROR,CANDLE_FETCH_FAILED,LT: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T05:11:56.522291+00:00,ERROR,CANDLE_FETCH_FAILED,WIPRO: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
