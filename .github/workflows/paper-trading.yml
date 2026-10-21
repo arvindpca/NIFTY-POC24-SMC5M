@@ -1,16 +1,10 @@
 name: Strategy B Paper Trading
 
 on:
-  # Run once immediately when workflow/config code is pushed to main; ignore bot-generated data-only commits.
   push:
     branches: [main]
     paths-ignore:
       - "data/**"
-  # Scheduled paper-only cycles from 09:00 to 15:40 IST, Monday-Friday.
-  # GitHub cron is UTC; these three entries map to 09:00-15:40 IST every 5 minutes.
-  # Fallback starters, 09:00-15:40 IST Mon-Fri (GitHub cron is UTC, every 15 min).
-  # Each started job loops internally every 5 minutes until 15:40 IST, so a
-  # delayed or dropped cron tick no longer stops the live scan.
   schedule:
     - cron: "30,45 3 * * 1-5"
     - cron: "*/15 4-9 * * 1-5"
@@ -22,7 +16,6 @@ permissions:
 
 concurrency:
   group: strategy-b-paper-trading
-  # Replace a stuck/older loop with the newest requested run instead of queueing indefinitely.
   cancel-in-progress: true
 
 jobs:
@@ -95,33 +88,33 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           persist() {
-            git add data/paper_state.json data/trade_history.csv data/system_log.csv data/strategy_b_paper_history.xlsx 2>/dev/null || true
+            git add config/symbol_tokens.csv data/unresolved_symbols.csv data/paper_state.json data/trade_history.csv data/system_log.csv data/strategy_b_paper_history.xlsx 2>/dev/null || true
             if ! git diff --cached --quiet; then
-              git commit -q -m "chore: persist Strategy B paper state"
+              git commit -q -m "chore: persist paper scanner outputs"
               git pull -q --rebase origin main || git rebase --abort
               git push -q origin HEAD:main || echo "push failed; will retry next cycle"
             fi
           }
-          hard_stop=$(( $(date +%s) + 20400 ))   # GitHub job runtime limit; restart on next scheduled/manual run
+          hard_stop=$(( $(date +%s) + 20400 ))
           while true; do
             echo "=== cycle $(TZ=Asia/Kolkata date '+%F %T IST') ==="
             timeout --signal=TERM --kill-after=15s 1200s python -u -m app.main || echo "cycle failed or timed out after 1200s (see log above); continuing"
             persist
             now=$(date +%s)
             if [ "$now" -ge "$hard_stop" ]; then break; fi
-            next=$(( (now / 300 + 1) * 300 + 20 ))   # next 5-min boundary + 20s
+            next=$(( (now / 300 + 1) * 300 + 20 ))
             sleep $(( next - now ))
           done
           echo "Temporary all-hours scan loop finished at GitHub Actions runtime limit."
 
-      - name: Persist paper state and audit CSVs
+      - name: Persist paper state, verified token master, and unresolved-symbol report
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/paper_state.json data/trade_history.csv data/system_log.csv data/strategy_b_paper_history.xlsx 2>/dev/null || true
+          git add config/symbol_tokens.csv data/unresolved_symbols.csv data/paper_state.json data/trade_history.csv data/system_log.csv data/strategy_b_paper_history.xlsx 2>/dev/null || true
           if ! git diff --cached --quiet; then
-            git commit -q -m "chore: persist Strategy B paper state"
+            git commit -q -m "chore: persist paper scanner outputs"
             git pull -q --rebase origin main || git rebase --abort
             git push -q origin HEAD:main || true
           fi
