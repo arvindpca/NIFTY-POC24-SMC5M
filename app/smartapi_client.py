@@ -12,7 +12,7 @@ IST = ZoneInfo("Asia/Kolkata")
 # Conservative historical-candle pacing. Angel One may enforce account-level
 # limits stricter than the per-second limits documented for other endpoints.
 MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "12.0"))
-MAX_RETRIES = int(os.getenv("SMARTAPI_MAX_RETRIES", "1"))
+MAX_RETRIES = int(os.getenv("SMARTAPI_MAX_RETRIES", "0"))
 BACKOFF_BASE_SEC = float(os.getenv("SMARTAPI_BACKOFF_BASE_SEC", "30.0"))
 RATE_LIMIT_COOLDOWN_SEC = float(os.getenv("SMARTAPI_RATE_LIMIT_COOLDOWN_SEC", "300.0"))
 
