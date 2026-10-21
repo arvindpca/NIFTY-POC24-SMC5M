@@ -1,4 +1,4 @@
-"""Refresh the paper scanner's NSE equity tokens from Angel One's official instrument master.
+""""Refresh the paper scanner's NSE equity tokens from Angel One's official instrument master.
 
 This is for paper-only market-data scanning. It never places orders and never guesses tokens.
 """
@@ -27,11 +27,15 @@ def main():
         master = json.load(response)
 
     by_symbol = {}
+    exchange_counts = {}
     for item in master:
-        exchange_segment = str(item.get("exch_seg", "")).lower()
+        exchange_segment = str(item.get("exch_seg", "")).strip().upper()
+        exchange_counts[exchange_segment] = exchange_counts.get(exchange_segment, 0) + 1
         tradingsymbol = str(item.get("symbol", "")).strip().upper()
         token = str(item.get("token", "")).strip()
-        if exchange_segment != "nse_cm" or not token:
+        # Angel One's instrument master commonly labels cash equities as "NSE".
+        # Accept "NSE_CM" too for compatible master-file variants.
+        if exchange_segment not in {"NSE", "NSE_CM"} or not token:
             continue
         if tradingsymbol.endswith("-EQ"):
             base = tradingsymbol[:-3]
@@ -40,6 +44,9 @@ def main():
 
     missing = [s for s in symbols if s not in by_symbol]
     if missing:
+        print("INSTRUMENT_MASTER_EXCHANGE_SEGMENTS | " + ", ".join(
+            f"{key or '<blank>'}:{value}" for key, value in sorted(exchange_counts.items())
+        ))
         raise SystemExit("No verified NSE-EQ token found for: " + ", ".join(missing))
 
     rows = [{"symbol": "NIFTY", "token": NIFTY_TOKEN, "exchange": "NSE"}]
