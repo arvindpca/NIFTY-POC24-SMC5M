@@ -48,6 +48,9 @@ jobs:
       - name: Compile Python files
         run: python -m compileall -q app tests strategy_b_original.py
 
+      - name: Refresh verified NSE tokens for current scan universe
+        run: python -m app.refresh_symbol_tokens
+
       - name: Verify required configuration exists
         run: |
           test -f config/symbol_tokens.csv || { echo "Missing config/symbol_tokens.csv"; exit 1; }
