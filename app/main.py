@@ -13,7 +13,7 @@ import pandas as pd
 
 from app.config import validate_config
 from app.notifications import send_telegram, entry_alert, close_alert
-from app.smartapi_client import create_data_client, fetch_5m_candles
+from app.smartapi_client import create_data_client, fetch_5m_candles, SmartAPIRateLimitError
 from app.storage import load_state, save_state, save_trade, log_event, export_excel, DATA_DIR, FIELDS
 from app.strategy_adapter import get_latest_signal
 from app.rules import exit_decision, is_stale_entry, target_for
@@ -243,16 +243,33 @@ def main():
     pending_symbols = [(symbol, tokens[symbol]) for symbol in selected]
     print(f"SCAN PLAN | universe={len(universe)} | selected={len(pending_symbols)} | symbols={','.join(selected)}")
 
+    rate_limit_hit = False
     for symbol, item in pending_symbols:
         try:
             raw = fetch_5m_candles(api, item["exchange"], item["token"])
             raw_by_symbol[symbol] = raw
             frames[symbol] = completed_15m(raw)
+            print(f"CANDLE_FETCH_OK | symbol={symbol} | rows={len(raw)}")
+        except SmartAPIRateLimitError as exc:
+            log_event("ERROR", "SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER", f"{symbol}: {exc}")
+            print(f"RATE LIMIT CIRCUIT BREAKER | symbol={symbol} | stopping this scan to protect the API: {exc}")
+            rate_limit_hit = True
+            break
         except Exception as exc:
             log_event("ERROR", "CANDLE_FETCH_FAILED", f"{symbol}: {exc}")
             print(f"Data unavailable for {symbol}; no new signal from this symbol: {exc}")
     if "NIFTY" not in raw_by_symbol:
-        raise RuntimeError("NIFTY candles unavailable; stop safely rather than bypassing market filter.")
+        save_state(state)
+        try:
+            export_excel()
+        except Exception as exc:
+            log_event("ERROR", "EXCEL_EXPORT_FAILED", str(exc))
+        try:
+            api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
+        except Exception:
+            pass
+        print("CYCLE ABORTED SAFELY | NIFTY data unavailable; no signals evaluated.")
+        return
     nifty_raw = raw_by_symbol["NIFTY"]
     process_pending(state, frames)
     close_positions(state, frames)
