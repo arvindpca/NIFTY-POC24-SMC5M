@@ -129,3 +129,4 @@ timestamp,level,event,detail
 2026-10-21T07:31:47.974861+00:00,ERROR,CANDLE_FETCH_FAILED,SHRIRAMFIN: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-21T07:31:47.974945+00:00,ERROR,CANDLE_FETCH_FAILED,TECHM: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-21T07:31:47.975012+00:00,ERROR,CANDLE_FETCH_FAILED,ULTRACEMCO: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-21T07:42:07.696745+00:00,ERROR,CANDLE_FETCH_FAILED,LT: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
