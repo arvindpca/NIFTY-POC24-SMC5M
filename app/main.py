@@ -3,6 +3,7 @@ import csv
 import json
 import math
 import os
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -217,14 +218,30 @@ def main():
     state = load_state()
     raw_by_symbol = {}
     frames = {}
-    for symbol, item in tokens.items():
-        try:
-            raw = fetch_5m_candles(api, item["exchange"], item["token"])
-            raw_by_symbol[symbol] = raw
-            frames[symbol] = completed_15m(raw)
-        except Exception as exc:
+    started = time.monotonic()
+    pending_symbols = list(tokens.items())
+    # Up to two passes: symbols that hit Angel One rate limits get one more try
+    # after a short cool-down. Pass 2 is skipped if too much time was used.
+    for attempt in (1, 2):
+        failed = []
+        for symbol, item in pending_symbols:
+            try:
+                raw = fetch_5m_candles(api, item["exchange"], item["token"])
+                raw_by_symbol[symbol] = raw
+                frames[symbol] = completed_15m(raw)
+            except Exception as exc:
+                failed.append((symbol, item, exc))
+        if not failed:
+            break
+        if attempt == 1 and time.monotonic() - started < 360:
+            print(f"{len(failed)} symbols failed; cooling down 15s then retrying once.")
+            time.sleep(15)
+            pending_symbols = [(sym, item) for sym, item, _ in failed]
+            continue
+        for symbol, _item, exc in failed:
             log_event("ERROR", "CANDLE_FETCH_FAILED", f"{symbol}: {exc}")
             print(f"Data unavailable for {symbol}; no new signal from this symbol.")
+        break
     if "NIFTY" not in raw_by_symbol:
         raise RuntimeError("NIFTY candles unavailable; stop safely rather than bypassing market filter.")
     nifty_raw = raw_by_symbol["NIFTY"]
