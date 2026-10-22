@@ -129,10 +129,14 @@ def load_or_update_candle_cache(api, symbol, item):
         mode = "INITIAL_HISTORY"
     else:
         last_ts = cached["timestamp"].max()
-        fetched = fetch_15m_candles(
-            api, item["exchange"], item["token"], from_timestamp=last_ts
-        )
-        mode = "INCREMENTAL"
+        if last_ts >= pd.Timestamp.now(tz=IST).floor("15min"):
+            fetched = cached.iloc[0:0]  # END-labelled bar already cached: no API call needed
+            mode = "CACHE_FRESH"
+        else:
+            fetched = fetch_15m_candles(
+                api, item["exchange"], item["token"], from_timestamp=last_ts
+            )
+            mode = "INCREMENTAL"
 
     if cached is not None:
         combined = pd.concat([cached, fetched], ignore_index=True)
@@ -267,7 +271,8 @@ def process_pending(state, latest_by_symbol):
         del pending[key]
 
 
-def main():
+def main(session=None):
+    """One scan cycle. A long-running loop passes its shared logged-in `session`; standalone runs log in/out."""
     validate_config()
     if os.getenv("PAPER_ONLY", "true").strip().lower() != "true":
         raise RuntimeError("Safety stop: PAPER_ONLY must be true.")
@@ -311,12 +316,12 @@ def main():
                 log_event("WARNING", "SMARTAPI_COOLDOWN_YAHOO_FALLBACK", message)
             else:
                 state.pop("smartapi_rate_limit_until", None)
-                api = create_data_client()
+                api = session or create_data_client()
         except (ValueError, TypeError):
             state.pop("smartapi_rate_limit_until", None)
-            api = create_data_client()
+            api = session or create_data_client()
     else:
-        api = create_data_client()
+        api = session or create_data_client()
     raw_by_symbol = {}
     frames = {}
     cycle_id = now.strftime("%Y%m%d-%H%M%S")
@@ -408,10 +413,11 @@ def main():
             export_excel()
         except Exception as exc:
             log_event("ERROR", "EXCEL_EXPORT_FAILED", str(exc))
-        try:
-            api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
-        except Exception:
-            pass
+        if api is not None and session is None:
+            try:
+                api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
+            except Exception:
+                pass
         record_scan_diagnostic(
             cycle_id, "NIFTY", "CYCLE",
             "ABORTED_RATE_LIMIT" if rate_limit_hit else "ABORTED_NIFTY_DATA_UNAVAILABLE",
@@ -486,7 +492,7 @@ def main():
     except Exception as exc:
         log_event("ERROR", "EXCEL_EXPORT_FAILED", str(exc))
         print(f"Excel export failed: {exc}")
-    if api is not None:
+    if api is not None and session is None:
         try:
             api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
         except Exception:

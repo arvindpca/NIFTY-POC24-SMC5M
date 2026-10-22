@@ -6,8 +6,8 @@ on:
     paths-ignore:
       - "data/**"
   schedule:
-    - cron: "*/15 3-9 * * 1-5"
-    - cron: "0 10 * * 1-5"
+    - cron: "40 3 * * 1-5"      # 09:10 IST: starts the day's loop
+    - cron: "*/30 4-9 * * 1-5"  # safety net: restarts the loop if it ever stopped mid-session
   workflow_dispatch:
 
 permissions:
@@ -15,12 +15,12 @@ permissions:
 
 concurrency:
   group: strategy-b-paper-trading
-  cancel-in-progress: true
+  cancel-in-progress: false  # never kill a running loop; a newer run waits and exits if the market is closed
 
 jobs:
   paper-trading:
     runs-on: ubuntu-24.04
-    timeout-minutes: 355
+    timeout-minutes: 400
     steps:
       - name: Checkout default branch
         uses: actions/checkout@v7
@@ -81,11 +81,14 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
-      - name: Single scheduled paper-only scan cycle (15-minute cadence, NSE session only)
+      - name: Paper-only scan loop (one SmartAPI login, scan after every 15-minute candle, NSE session only)
         env:
           PAPER_ONLY: "true"
+          PERSIST_GIT: "true"
+          LOOP_MINUTES: "385"
           PAPER_SCAN_BATCH_SIZE: "35"
-          SMARTAPI_MIN_CALL_GAP_SEC: "15.0"
+          SMARTAPI_MIN_CALL_GAP_SEC: "0.5"
+          SMARTAPI_MAX_CALL_GAP_SEC: "3.0"
           SMARTAPI_MAX_RETRIES: "0"
           ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
           ANGEL_CLIENT_CODE: ${{ secrets.ANGEL_CLIENT_CODE }}
@@ -95,21 +98,11 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           PAPER_COST_BPS_PER_SIDE: "0"
           PAPER_ALLOW_OFFSESSION_SCAN: "false"
+          PYTHONUNBUFFERED: "1"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          persist() {
-            git add config/symbol_tokens.csv data/unresolved_symbols.csv data/paper_state.json data/trade_history.csv data/system_log.csv data/scan_diagnostics.csv data/strategy_b_paper_history.xlsx 2>/dev/null || true
-            if ! git diff --cached --quiet; then
-              git commit -q -m "chore: persist paper scanner outputs"
-              git pull -q --rebase origin main || git rebase --abort
-              git push -q origin HEAD:main || echo "push failed; will retry next cycle"
-            fi
-          }
-          echo "=== single paper scan cycle $(TZ=Asia/Kolkata date '+%F %T IST') ==="
-          timeout --signal=TERM --kill-after=15s 1200s python -u -m app.main
-          persist
-          echo "Single paper scan cycle finished at $(TZ=Asia/Kolkata date '+%F %T IST')"
+          python -u -m app.loop
 
       - name: Save 15-minute candle cache
         if: always()
