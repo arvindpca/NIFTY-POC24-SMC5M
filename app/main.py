@@ -486,28 +486,31 @@ def main():
     except Exception as exc:
         log_event("ERROR", "EXCEL_EXPORT_FAILED", str(exc))
         print(f"Excel export failed: {exc}")
-    try:
-        api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
-    except Exception:
-        pass
+    if api is not None:
+        try:
+            api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
+        except Exception:
+            pass
     print(f"SCAN DIAGNOSTICS | cycle_id={cycle_id} | " + " | ".join(f"{k}={v}" for k, v in diagnostic_counts.items()))
     print(
         f"Paper cycle complete {now.isoformat()} | selected={len(pending_symbols)} | "
         f"fetched_ok={fetched_count} | cache_initial={cache_modes.get('INITIAL_HISTORY', 0)} | "
         f"cache_incremental={cache_modes.get('INCREMENTAL', 0)} | "
+        f"yahoo_fallback={cache_modes.get('YAHOO_FALLBACK', 0)} | "
         f"elapsed_sec={time.monotonic()-scan_started:.1f} | "
         f"open={len(state['open_positions'])} | pending={len(state.get('pending_entries', {}))}"
     )
-    if rate_limit_hit:
+    if rate_limit_hit and fetched_count < len(pending_symbols):
         message = (
-            "PAPER SCAN INCOMPLETE: SmartAPI rate limit blocked part of the stock batch. "
-            f"Fetched {fetched_count}/{len(pending_symbols)} selected instruments; "
-            "state and diagnostics were saved, but this cycle is not a complete scan. "
-            "Do not repeatedly rerun; verify Angel One API throttling before the next cycle."
+            "PAPER SCAN INCOMPLETE: SmartAPI rate limit occurred and Yahoo fallback "
+            f"could not fetch every selected instrument ({fetched_count}/{len(pending_symbols)} fetched). "
+            "State and diagnostics were saved; inspect YAHOO_FALLBACK_FAILED rows."
         )
         log_event("ERROR", "PAPER_SCAN_INCOMPLETE_RATE_LIMIT", message)
         print(message)
         raise RuntimeError(message)
+    if rate_limit_hit:
+        print("PAPER SCAN COMPLETE WITH DATA FALLBACK | SmartAPI cooldown saved; selected instruments fetched via Yahoo fallback.")
 
 
 if __name__ == "__main__":
