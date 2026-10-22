@@ -295,3 +295,4 @@ timestamp,level,event,detail
 2026-10-22T04:52:40.259402+00:00,ERROR,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,NIFTY: SmartAPI rate limit for token 99926000: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-22T04:53:30.337185+00:00,ERROR,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,NIFTY: SmartAPI rate limit for token 99926000: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-22T04:59:08.634432+00:00,ERROR,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,BANKBARODA: SmartAPI rate limit for token 4668: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-22T05:01:41.433471+00:00,ERROR,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,CREDITACC: SmartAPI rate limit for token 4421: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
