@@ -1,8 +1,11 @@
-API CHECK 2026-10-22T21:12:56.303593+05:30
-LOGIN OK (2.0s)
-NIFTY: FAILED -> Insufficient completed 15-minute history (50 bars) for strategy warm-up.
-RELIANCE: not in token list
-HDFCBANK: not in token list
-SBIN: not in token list
-INFY: not in token list
-RESULT 0/5 fetched; logins=1; gap=0.50s
+API CHECK 2026-10-22T21:19:33.095899+05:30
+LOGIN OK (1.7s)
+NIFTY: OK rows=175 last_bar=2026-10-22 15:30:00+05:30 (0.7s)
+AARTIIND: OK rows=175 last_bar=2026-10-22 15:30:00+05:30 (0.7s)
+ABCAPITAL: OK rows=175 last_bar=2026-10-22 15:30:00+05:30 (0.7s)
+ACC: OK rows=175 last_bar=2026-10-22 15:30:00+05:30 (0.7s)
+ACE: OK rows=175 last_bar=2026-10-22 15:30:00+05:30 (0.7s)
+ACMESOLAR: OK rows=175 last_bar=2026-10-22 15:30:00+05:30 (0.7s)
+ADANIGREEN: OK rows=175 last_bar=2026-10-22 15:30:00+05:30 (0.7s)
+ADANIPORTS: OK rows=175 last_bar=2026-10-22 15:30:00+05:30 (0.7s)
+RESULT 8/8 fetched; logins=1; gap=0.50s
