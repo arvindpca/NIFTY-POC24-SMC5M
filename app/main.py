@@ -303,8 +303,9 @@ def main():
                 print(message)
                 log_event("WARNING", "SMARTAPI_COOLDOWN_ACTIVE", message)
                 save_state(state)
-                # A cooldown skip is an intentional no-op, not a scan failure.
-                return
+                # A cooldown is NOT a successful scan. Fail visibly so GitHub Actions
+                # cannot report green while no market data or signals were evaluated.
+                raise RuntimeError(message)
             state.pop("smartapi_rate_limit_until", None)
         except (ValueError, TypeError):
             state.pop("smartapi_rate_limit_until", None)
