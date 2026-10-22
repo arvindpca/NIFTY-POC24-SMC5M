@@ -34,12 +34,23 @@ class SessionTests(unittest.TestCase):
         for p in self.p:
             p.stop()
 
-    def test_rate_limit_raises_without_retry(self):
-        api = FakeApi([Exception("Access denied because of exceeding access rate")])
+    def test_rate_limit_retries_once_then_raises(self):
+        api = FakeApi([
+            Exception("Access denied because of exceeding access rate"),
+            Exception("Too many requests"),
+        ])
         with self.assertRaises(sc.SmartAPIRateLimitError):
             sc._get_candle_data_with_retry(api, {}, "1")
-        self.assertEqual(api.calls, 1)
+        self.assertEqual(api.calls, sc.MAX_RETRIES + 1)
         self.assertGreater(sc.current_gap(), sc.MIN_CALL_GAP_SEC)
+
+    def test_rate_limit_retry_recovers(self):
+        api = FakeApi([
+            Exception("Access denied because of exceeding access rate"),
+            OK,
+        ])
+        self.assertEqual(sc._get_candle_data_with_retry(api, {}, "1"), OK)
+        self.assertEqual(api.calls, 2)
 
     def test_invalid_token_relogs_once_then_succeeds(self):
         class S(FakeApi):
