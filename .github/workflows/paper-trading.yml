@@ -84,8 +84,8 @@ jobs:
       - name: Continuous paper-only scan (every 5 min, NSE session only)
         env:
           PAPER_ONLY: "true"
-          PAPER_SCAN_BATCH_SIZE: "20"
-          SMARTAPI_MIN_CALL_GAP_SEC: "3.0"
+          PAPER_SCAN_BATCH_SIZE: "3"
+          SMARTAPI_MIN_CALL_GAP_SEC: "15.0"
           SMARTAPI_MAX_RETRIES: "0"
           ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
           ANGEL_CLIENT_CODE: ${{ secrets.ANGEL_CLIENT_CODE }}
