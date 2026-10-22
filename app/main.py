@@ -105,7 +105,7 @@ def completed_15m(raw):
 
 def load_or_update_candle_cache(api, symbol, item):
     """Keep direct 15m candles locally and request only data newer than the cache."""
-    cache_dir = DATA_DIR / "candle_cache_15m"
+    cache_dir = DATA_DIR / "candle_cache_15m_end_labeled_v2"
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_path = cache_dir / f"{symbol}.csv"
     cached = None
