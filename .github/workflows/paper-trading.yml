@@ -32,11 +32,11 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            data/candle_cache_15m
+            data/candle_cache_15m_end_labeled_v2
             data/angel_instrument_master.json
-          key: candle-cache-15m-${{ github.ref_name }}-${{ github.run_id }}
+          key: candle-cache-15m-end-v2-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
-            candle-cache-15m-${{ github.ref_name }}-
+            candle-cache-15m-end-v2-${{ github.ref_name }}-
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -81,7 +81,7 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
-      - name: Continuous paper-only scan (every 5 min, NSE session only)
+      - name: Single scheduled paper-only scan cycle (15-minute cadence, NSE session only)
         env:
           PAPER_ONLY: "true"
           PAPER_SCAN_BATCH_SIZE: "3"
@@ -116,9 +116,9 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: |
-            data/candle_cache_15m
+            data/candle_cache_15m_end_labeled_v2
             data/angel_instrument_master.json
-          key: candle-cache-15m-${{ github.ref_name }}-${{ github.run_id }}
+          key: candle-cache-15m-end-v2-${{ github.ref_name }}-${{ github.run_id }}
 
       - name: Persist paper state, verified token master, and unresolved-symbol report
         if: always()
