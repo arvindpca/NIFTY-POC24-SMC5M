@@ -9,14 +9,13 @@ from SmartApi import SmartConnect
 
 IST = ZoneInfo("Asia/Kolkata")
 
-# Historical candle endpoint is documented at up to 3 requests/second and
-# 150 requests/minute. A 0.45s minimum gap stays below both limits (~133/min)
-# while avoiding the old 12s delay that made a full-universe scan impractical.
-# If this account/IP still receives a rate-limit response, the circuit breaker
-# below stops the cycle rather than continuing to hammer the API.
-MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "0.45"))
+# Conservative account-level pacing: some SmartAPI accounts/IPs are throttled
+# well below the published endpoint ceiling. 1.25s means at most ~48 calls/min,
+# reducing bursts while still allowing a 175-instrument pass in about 4 minutes.
+# Keep this shared throttle for every historical candle request in this process.
+MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "1.25"))
 MAX_RETRIES = int(os.getenv("SMARTAPI_MAX_RETRIES", "0"))
-BACKOFF_BASE_SEC = float(os.getenv("SMARTAPI_BACKOFF_BASE_SEC", "30.0"))
+BACKOFF_BASE_SEC = float(os.getenv("SMARTAPI_BACKOFF_BASE_SEC", "60.0"))
 RATE_LIMIT_COOLDOWN_SEC = float(os.getenv("SMARTAPI_RATE_LIMIT_COOLDOWN_SEC", "300.0"))
 
 
