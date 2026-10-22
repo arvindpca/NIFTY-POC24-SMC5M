@@ -84,7 +84,7 @@ jobs:
         env:
           PAPER_ONLY: "true"
           PAPER_SCAN_BATCH_SIZE: "174"
-          SMARTAPI_MIN_CALL_GAP_SEC: "1.25"
+          SMARTAPI_MIN_CALL_GAP_SEC: "2.0"
           SMARTAPI_MAX_RETRIES: "0"
           ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
           ANGEL_CLIENT_CODE: ${{ secrets.ANGEL_CLIENT_CODE }}
@@ -105,17 +105,10 @@ jobs:
               git push -q origin HEAD:main || echo "push failed; will retry next cycle"
             fi
           }
-          hard_stop=$(( $(date +%s) + 20400 ))
-          while true; do
-            echo "=== cycle $(TZ=Asia/Kolkata date '+%F %T IST') ==="
-            timeout --signal=TERM --kill-after=15s 1200s python -u -m app.main || echo "cycle failed or timed out after 1200s (see log above); continuing"
-            persist
-            now=$(date +%s)
-            if [ "$now" -ge "$hard_stop" ]; then break; fi
-            next=$(( (now / 300 + 1) * 300 + 20 ))
-            sleep $(( next - now ))
-          done
-          echo "Temporary all-hours scan loop finished at GitHub Actions runtime limit."
+          echo "=== single paper scan cycle $(TZ=Asia/Kolkata date '+%F %T IST') ==="
+          timeout --signal=TERM --kill-after=15s 1200s python -u -m app.main
+          persist
+          echo "Single paper scan cycle finished at $(TZ=Asia/Kolkata date '+%F %T IST')"
 
       - name: Save 15-minute candle cache
         if: always()
