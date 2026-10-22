@@ -23,7 +23,7 @@ IST = ZoneInfo("Asia/Kolkata")
 # Historical candles: documented limits are 3 requests/second and 180/minute.
 MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "2.0"))
 MAX_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MAX_CALL_GAP_SEC", "4.0"))
-MAX_RETRIES = int(os.getenv("SMARTAPI_MAX_RETRIES", "0"))
+MAX_RETRIES = int(os.getenv("SMARTAPI_MAX_RETRIES", "1"))
 BACKOFF_BASE_SEC = float(os.getenv("SMARTAPI_BACKOFF_BASE_SEC", "60.0"))
 RATE_LIMIT_COOLDOWN_SEC = float(os.getenv("SMARTAPI_RATE_LIMIT_COOLDOWN_SEC", "300.0"))
 RELOGIN_MIN_INTERVAL_SEC = float(os.getenv("SMARTAPI_RELOGIN_MIN_INTERVAL_SEC", "120"))
