@@ -13,7 +13,7 @@ import pandas as pd
 
 from app.config import validate_config
 from app.notifications import send_telegram, entry_alert, close_alert
-from app.smartapi_client import create_data_client, fetch_15m_candles, SmartAPIRateLimitError
+from app.smartapi_client import create_data_client, fetch_15m_candles, fetch_yahoo_15m_candles, SmartAPIRateLimitError
 from app.storage import load_state, save_state, save_trade, log_event, export_excel, DATA_DIR, FIELDS
 from app.strategy_adapter import get_latest_signal
 from app.rules import exit_decision, is_stale_entry, target_for
@@ -118,7 +118,13 @@ def load_or_update_candle_cache(api, symbol, item):
             log_event("WARNING", "CANDLE_CACHE_READ_FAILED", f"{symbol}: {exc}")
             cached = None
 
-    if cached is None:
+    if api is None:
+        # SmartAPI is in cooldown or has rate-limited this cycle. Use the
+        # second repository's Yahoo historical warm-up approach, without
+        # changing Strategy B's signal rules.
+        fetched = fetch_yahoo_15m_candles(symbol, lookback_days=10)
+        mode = "YAHOO_FALLBACK"
+    elif cached is None:
         fetched = fetch_15m_candles(api, item["exchange"], item["token"], lookback_days=10)
         mode = "INITIAL_HISTORY"
     else:
@@ -284,8 +290,9 @@ def main():
         print(f"OFF-SESSION DIAGNOSTIC SCAN ENABLED | {now.isoformat()} | historical candles only; no real orders.")
     tokens = load_tokens()
     state = load_state()
-    # Persist a circuit-breaker cooldown after SmartAPI account/IP throttling.
-    # Avoid repeated scheduled logins/candle calls while the provider is rejecting access.
+    # When SmartAPI is cooling down, keep the scanner useful via Yahoo 15m
+    # history rather than falsely reporting a successful no-op or hammering the API.
+    api = None
     cooldown_until = state.get("smartapi_rate_limit_until")
     if cooldown_until:
         try:
@@ -298,18 +305,18 @@ def main():
             if current < until:
                 message = (
                     f"SMARTAPI COOLDOWN ACTIVE until {until.isoformat()}; "
-                    "skipping API login/polling to avoid repeated access-rate violations."
+                    "using Yahoo 15m fallback for this paper scan."
                 )
                 print(message)
-                log_event("WARNING", "SMARTAPI_COOLDOWN_ACTIVE", message)
-                save_state(state)
-                # A cooldown is NOT a successful scan. Fail visibly so GitHub Actions
-                # cannot report green while no market data or signals were evaluated.
-                raise RuntimeError(message)
-            state.pop("smartapi_rate_limit_until", None)
+                log_event("WARNING", "SMARTAPI_COOLDOWN_YAHOO_FALLBACK", message)
+            else:
+                state.pop("smartapi_rate_limit_until", None)
+                api = create_data_client()
         except (ValueError, TypeError):
             state.pop("smartapi_rate_limit_until", None)
-    api = create_data_client()
+            api = create_data_client()
+    else:
+        api = create_data_client()
     raw_by_symbol = {}
     frames = {}
     cycle_id = now.strftime("%Y%m%d-%H%M%S")
@@ -350,7 +357,7 @@ def main():
     rate_limit_hit = False
     scan_started = time.monotonic()
     fetched_count = 0
-    cache_modes = {"INITIAL_HISTORY": 0, "INCREMENTAL": 0}
+    cache_modes = {"INITIAL_HISTORY": 0, "INCREMENTAL": 0, "YAHOO_FALLBACK": 0}
     for symbol, item in pending_symbols:
         symbol_started = time.monotonic()
         try:
@@ -367,15 +374,29 @@ def main():
                 f"seconds={time.monotonic()-symbol_started:.1f}"
             )
         except SmartAPIRateLimitError as exc:
-            diagnostic_counts["fetch_failed"] += 1
-            record_scan_diagnostic(cycle_id, symbol, "FETCH", "RATE_LIMIT", exc)
-            log_event("ERROR", "SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER", f"{symbol}: {exc}")
-            print(f"RATE LIMIT CIRCUIT BREAKER | symbol={symbol} | stopping this scan to protect the API: {exc}")
+            record_scan_diagnostic(cycle_id, symbol, "FETCH", "SMARTAPI_RATE_LIMIT_YAHOO_FALLBACK", exc)
+            log_event("WARNING", "SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER", f"{symbol}: {exc}")
+            print(f"SMARTAPI RATE LIMIT | symbol={symbol} | switching this cycle to Yahoo 15m fallback: {exc}")
             rate_limit_hit = True
             state["smartapi_rate_limit_until"] = (
                 pd.Timestamp.now(tz=IST) + pd.Timedelta(minutes=60)
             ).isoformat()
-            break
+            api = None
+            try:
+                raw, cache_mode, fetched_rows = load_or_update_candle_cache(api, symbol, item)
+                raw_by_symbol[symbol] = raw
+                frames[symbol] = completed_15m(raw)
+                fetched_count += 1
+                diagnostic_counts["fetch_ok"] += 1
+                record_scan_diagnostic(cycle_id, symbol, "FETCH", "YAHOO_FALLBACK_OK", f"rows={len(raw)}; completed_bars={len(frames[symbol])}")
+                cache_modes["YAHOO_FALLBACK"] = cache_modes.get("YAHOO_FALLBACK", 0) + 1
+                print(f"CANDLE_FETCH_OK | source=YAHOO_FALLBACK | symbol={symbol} | rows={len(raw)}")
+            except Exception as fallback_exc:
+                diagnostic_counts["fetch_failed"] += 1
+                record_scan_diagnostic(cycle_id, symbol, "FETCH", "YAHOO_FALLBACK_FAILED", fallback_exc)
+                print(f"YAHOO FALLBACK FAILED | {symbol} | {fallback_exc}")
+                if symbol == "NIFTY":
+                    break
         except Exception as exc:
             diagnostic_counts["fetch_failed"] += 1
             record_scan_diagnostic(cycle_id, symbol, "FETCH", "FAILED", exc)
