@@ -445,6 +445,16 @@ def main():
         f"elapsed_sec={time.monotonic()-scan_started:.1f} | "
         f"open={len(state['open_positions'])} | pending={len(state.get('pending_entries', {}))}"
     )
+    if rate_limit_hit:
+        message = (
+            "PAPER SCAN INCOMPLETE: SmartAPI rate limit blocked part of the stock batch. "
+            f"Fetched {fetched_count}/{len(pending_symbols)} selected instruments; "
+            "state and diagnostics were saved, but this cycle is not a complete scan. "
+            "Do not repeatedly rerun; verify Angel One API throttling before the next cycle."
+        )
+        log_event("ERROR", "PAPER_SCAN_INCOMPLETE_RATE_LIMIT", message)
+        print(message)
+        raise RuntimeError(message)
 
 
 if __name__ == "__main__":
