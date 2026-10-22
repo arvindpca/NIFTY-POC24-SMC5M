@@ -9,9 +9,10 @@ from app.storage import DATA_DIR
 IST = sc.IST
 
 
-def main(symbols=("NIFTY", "RELIANCE", "HDFCBANK", "SBIN", "INFY")):
+def main(count=8):
     lines = [f"API CHECK {datetime.now(IST).isoformat()}"]
     tokens = load_tokens()
+    symbols = ["NIFTY"] + [s for s in tokens if s != "NIFTY"][:count - 1]
     t0 = time.monotonic()
     try:
         session = sc.create_data_client()
@@ -27,7 +28,7 @@ def main(symbols=("NIFTY", "RELIANCE", "HDFCBANK", "SBIN", "INFY")):
             continue
         t1 = time.monotonic()
         try:
-            df = sc.fetch_15m_candles(session, item["exchange"], item["token"], lookback_days=3)
+            df = sc.fetch_15m_candles(session, item["exchange"], item["token"], lookback_days=10)
             ok += 1
             lines.append(f"{sym}: OK rows={len(df)} last_bar={df['timestamp'].max()} ({time.monotonic()-t1:.1f}s)")
         except sc.SmartAPIRateLimitError as exc:
