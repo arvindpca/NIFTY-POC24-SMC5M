@@ -363,9 +363,21 @@ def main():
             api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
         except Exception:
             pass
-        record_scan_diagnostic(cycle_id, "NIFTY", "CYCLE", "ABORTED_NIFTY_DATA_UNAVAILABLE")
-        print("CYCLE ABORTED SAFELY | NIFTY data unavailable; no signals evaluated.")
-        return
+        record_scan_diagnostic(
+            cycle_id, "NIFTY", "CYCLE",
+            "ABORTED_RATE_LIMIT" if rate_limit_hit else "ABORTED_NIFTY_DATA_UNAVAILABLE",
+        )
+        if rate_limit_hit:
+            message = (
+                "PAPER SCAN FAILED: SmartAPI rate limit blocked the required NIFTY "
+                "candle fetch. No signals were evaluated. Check Angel One SmartAPI "
+                "account/IP throttling; do not repeatedly rerun the workflow."
+            )
+            log_event("ERROR", "PAPER_SCAN_ABORTED_RATE_LIMIT", message)
+            print(message)
+            raise RuntimeError(message)
+        print("PAPER SCAN FAILED: NIFTY data unavailable; no signals evaluated.")
+        raise RuntimeError("NIFTY data unavailable; refusing to report a successful scan.")
     nifty_raw = raw_by_symbol["NIFTY"]
     process_pending(state, frames)
     close_positions(state, frames)
