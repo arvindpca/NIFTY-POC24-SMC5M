@@ -84,7 +84,7 @@ jobs:
       - name: Single scheduled paper-only scan cycle (15-minute cadence, NSE session only)
         env:
           PAPER_ONLY: "true"
-          PAPER_SCAN_BATCH_SIZE: "3"
+          PAPER_SCAN_BATCH_SIZE: "35"
           SMARTAPI_MIN_CALL_GAP_SEC: "15.0"
           SMARTAPI_MAX_RETRIES: "0"
           ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
