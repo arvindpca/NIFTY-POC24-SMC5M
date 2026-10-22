@@ -13,7 +13,7 @@ IST = ZoneInfo("Asia/Kolkata")
 # well below the published endpoint ceiling. 1.25s means at most ~48 calls/min,
 # reducing bursts while still allowing a 175-instrument pass in about 4 minutes.
 # Keep this shared throttle for every historical candle request in this process.
-MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "1.25"))
+MIN_CALL_GAP_SEC = float(os.getenv("SMARTAPI_MIN_CALL_GAP_SEC", "2.0"))
 MAX_RETRIES = int(os.getenv("SMARTAPI_MAX_RETRIES", "0"))
 BACKOFF_BASE_SEC = float(os.getenv("SMARTAPI_BACKOFF_BASE_SEC", "60.0"))
 RATE_LIMIT_COOLDOWN_SEC = float(os.getenv("SMARTAPI_RATE_LIMIT_COOLDOWN_SEC", "300.0"))
