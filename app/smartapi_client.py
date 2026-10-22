@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import pandas as pd
+import requests
 import pyotp
 from SmartApi import SmartConnect
 
@@ -77,6 +78,58 @@ def create_data_client():
     if not result or not result.get("status"):
         raise RuntimeError("Angel One login failed; inspect SmartAPI status without logging secrets.")
     return api
+
+
+
+def fetch_yahoo_15m_candles(symbol, lookback_days=10):
+    """Fallback 15m OHLCV from Yahoo chart API; never submits orders.
+
+    Yahoo timestamps are interval-start labels. Returned timestamps are shifted
+    to interval-end labels to match Strategy B's existing completed-bar contract.
+    """
+    clean = str(symbol).strip().upper().replace("-EQ", "")
+    ticker = "^NSEI" if clean == "NIFTY" else f"{clean}.NS"
+    now = int(datetime.now(IST).timestamp())
+    start = now - int(min(max(lookback_days, 1), 60) * 86400)
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{requests.utils.quote(ticker, safe='^')}"
+    response = requests.get(
+        url,
+        params={"period1": start, "period2": now, "interval": "15m", "events": "history"},
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=15,
+    )
+    response.raise_for_status()
+    payload = response.json().get("chart", {})
+    if payload.get("error"):
+        raise RuntimeError(f"Yahoo chart error for {ticker}: {payload['error']}")
+    results = payload.get("result") or []
+    if not results:
+        raise RuntimeError(f"Yahoo returned no 15m history for {ticker}")
+    result = results[0]
+    stamps = result.get("timestamp") or []
+    quote = ((result.get("indicators") or {}).get("quote") or [{}])[0]
+    if not stamps or not quote:
+        raise RuntimeError(f"Yahoo returned incomplete 15m OHLCV for {ticker}")
+    df = pd.DataFrame({
+        "timestamp": pd.to_datetime(stamps, unit="s", utc=True).tz_convert(IST),
+        "open": quote.get("open", []),
+        "high": quote.get("high", []),
+        "low": quote.get("low", []),
+        "close": quote.get("close", []),
+        "volume": quote.get("volume", []),
+    })
+    for col in ["open", "high", "low", "close", "volume"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.dropna(subset=["timestamp", "open", "high", "low", "close"])
+    df = df.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
+    # Drop the in-progress interval, then convert start labels to end labels.
+    now_ist = pd.Timestamp.now(tz=IST)
+    df = df[df["timestamp"] + pd.Timedelta(minutes=15) <= now_ist].copy()
+    df["timestamp"] = df["timestamp"] + pd.Timedelta(minutes=15)
+    df = df[df["timestamp"] >= now_ist - pd.Timedelta(days=lookback_days)]
+    if len(df) < 80:
+        raise RuntimeError(f"Yahoo 15m history too short for {ticker}: {len(df)} completed bars")
+    return df.reset_index(drop=True)
 
 
 def fetch_5m_candles(api, exchange, token, lookback_days=5):
