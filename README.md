@@ -11,6 +11,7 @@ This repository is **paper-trading only**. It does not place orders. `strategy_b
 - Paper entry model: next 15-minute candle open, fixed target 1.5R, SL at sweep extreme +/- 0.10 ATR.
 - Entry cutoff 14:20 IST; user-selected force exit is the completed end-labelled 15-minute candle at 15:00 IST (exit at that candle's close, before same-bar SL/TP checks).
 - Maximum 5 concurrent positions, no same-symbol overlap, maximum 5 entries per day.
+- One login per day: `app.loop` scans after every 15-minute candle (Actions job runs the whole NSE session), re-logging in only if Angel reports an invalid session.
 - Restart-safe JSON state, CSV trade history and system log; optional Telegram alerts.
 - No Angel One order-placement method is called.
 
