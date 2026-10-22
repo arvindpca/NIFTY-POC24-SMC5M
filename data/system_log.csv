@@ -293,3 +293,4 @@ timestamp,level,event,detail
 2026-10-22T04:51:11.743152+00:00,ERROR,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,HINDUNILVR: SmartAPI rate limit for token 1394: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-22T04:51:45.152280+00:00,ERROR,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,NIFTY: SmartAPI rate limit for token 99926000: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-22T04:52:40.259402+00:00,ERROR,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,NIFTY: SmartAPI rate limit for token 99926000: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-22T04:53:30.337185+00:00,ERROR,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,NIFTY: SmartAPI rate limit for token 99926000: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
