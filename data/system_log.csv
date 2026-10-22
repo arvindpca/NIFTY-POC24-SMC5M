@@ -273,3 +273,4 @@ timestamp,level,event,detail
 2026-10-21T18:31:07.272041+00:00,ERROR,CANDLE_FETCH_FAILED,HDFCLIFE: SmartAPI returned no candle data for token 467: Invalid Token
 2026-10-21T18:31:07.960078+00:00,ERROR,CANDLE_FETCH_FAILED,HINDALCO: SmartAPI returned no candle data for token 1363: Invalid Token
 2026-10-21T18:31:08.682968+00:00,ERROR,CANDLE_FETCH_FAILED,HINDCOPPER: SmartAPI returned no candle data for token 17939: Invalid Token
+2026-10-22T03:33:45.881628+00:00,ERROR,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,JSL: SmartAPI rate limit for token 11236: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
