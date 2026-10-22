@@ -7,6 +7,7 @@ import csv
 import json
 import os
 import tempfile
+import time
 import urllib.request
 from pathlib import Path
 
@@ -16,6 +17,8 @@ TOKEN_FILE = ROOT / "config" / "symbol_tokens.csv"
 REPORT_FILE = ROOT / "data" / "unresolved_symbols.csv"
 MASTER_URL = "https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json"
 NIFTY_TOKEN = "99926000"
+MASTER_CACHE = ROOT / "data" / "angel_instrument_master.json"
+MASTER_MAX_AGE_SEC = int(os.getenv("ANGEL_MASTER_CACHE_MAX_AGE_SEC", "21600"))
 NSE_SEGMENTS = {"NSE", "NSE_CM"}
 
 
@@ -40,9 +43,35 @@ def main():
     if not symbols or len(symbols) != len(set(symbols)):
         raise SystemExit("Universe is empty or contains duplicate symbols.")
 
-    req = urllib.request.Request(MASTER_URL, headers={"User-Agent": "StrategyB-PaperScanner/1.0"})
-    with urllib.request.urlopen(req, timeout=45) as response:
-        master = json.load(response)
+    # Reuse cached official instrument master for up to six hours.
+    master = None
+    if MASTER_CACHE.exists():
+        try:
+            age = time.time() - MASTER_CACHE.stat().st_mtime
+            if age <= MASTER_MAX_AGE_SEC:
+                with MASTER_CACHE.open("r", encoding="utf-8") as f:
+                    cached_master = json.load(f)
+                if isinstance(cached_master, list) and cached_master:
+                    master = cached_master
+                    print(f"INSTRUMENT_MASTER_CACHE_HIT | age_sec={int(age)} | instruments={len(master)}")
+        except (OSError, ValueError) as exc:
+            print(f"INSTRUMENT_MASTER_CACHE_INVALID | {type(exc).__name__}: {exc}")
+    if master is None:
+        req = urllib.request.Request(MASTER_URL, headers={"User-Agent": "StrategyB-PaperScanner/1.0"})
+        with urllib.request.urlopen(req, timeout=45) as response:
+            master = json.load(response)
+        if not isinstance(master, list) or not master:
+            raise SystemExit("Official Angel One instrument master was empty/invalid.")
+        MASTER_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(prefix="angel_master_", suffix=".json", dir=str(MASTER_CACHE.parent))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(master, f, separators=(",", ":"))
+            os.replace(tmp, MASTER_CACHE)
+        finally:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+        print(f"INSTRUMENT_MASTER_REFRESHED | instruments={len(master)}")
 
     by_symbol = {}
     candidates = {}
