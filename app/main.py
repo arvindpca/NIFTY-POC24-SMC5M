@@ -303,7 +303,8 @@ def main():
                 print(message)
                 log_event("WARNING", "SMARTAPI_COOLDOWN_ACTIVE", message)
                 save_state(state)
-                raise RuntimeError(message)
+                # A cooldown skip is an intentional no-op, not a scan failure.
+                return
             state.pop("smartapi_rate_limit_until", None)
         except (ValueError, TypeError):
             state.pop("smartapi_rate_limit_until", None)
