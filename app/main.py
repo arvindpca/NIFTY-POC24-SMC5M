@@ -291,15 +291,14 @@ def main():
     diagnostic_counts = {"fetch_ok": 0, "fetch_failed": 0, "no_new_candle": 0, "no_signal": 0, "duplicate_signal": 0, "signal_queued": 0, "evaluation_failed": 0, "invalid_frame": 0}
 
     # Rate-limit-safe rotating scan: fetch NIFTY and positions requiring attention
-    # every cycle, then a bounded stock batch. Avoid a 177-symbol burst every run.
-    # SmartAPI request pacing is enforced by smartapi_client; the cursor survives
-    # cycles through paper_state.json so the stock universe rotates fairly.
+    # every cycle, then a small stock batch. Fetching the whole universe each cycle
+    # risks exceeding API limits and overlapping scheduled runs. The cursor persists
+    # in paper_state.json so verified stocks rotate fairly across cycles.
     universe = [s for s in tokens if s != "NIFTY"]
-    # Aim to cover the entire verified universe in each 5-minute cycle.
-    # At 0.45s pacing, 175 serial calls need ~79s of pacing time; response time
-    # and strategy processing are measured by elapsed_sec. The rate-limit
-    # circuit breaker remains enabled and stops the cycle if Angel rejects calls.
-    batch_size = max(1, min(int(os.getenv("PAPER_SCAN_BATCH_SIZE", "200")), 200))
+    # Default 35 stocks per cycle: at 2s pacing this is about 70s plus response
+    # latency. A 174-stock universe rotates in about 25 minutes. NIFTY and any
+    # open/pending-position symbols are fetched every cycle as priorities.
+    batch_size = max(1, min(int(os.getenv("PAPER_SCAN_BATCH_SIZE", "35")), 50))
     cursor = int(state.get("scan_cursor", 0) or 0) % max(1, len(universe))
     if universe:
         rotating = [universe[(cursor + i) % len(universe)] for i in range(min(batch_size, len(universe)))]
