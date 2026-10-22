@@ -80,10 +80,12 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
-      - name: Continuous paper-only scan (every 5 min, temporary all-hours mode)
+      - name: Continuous paper-only scan (every 5 min, NSE session only)
         env:
           PAPER_ONLY: "true"
-          PAPER_SCAN_BATCH_SIZE: "200"
+          PAPER_SCAN_BATCH_SIZE: "174"
+          SMARTAPI_MIN_CALL_GAP_SEC: "1.25"
+          SMARTAPI_MAX_RETRIES: "0"
           ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
           ANGEL_CLIENT_CODE: ${{ secrets.ANGEL_CLIENT_CODE }}
           ANGEL_PIN: ${{ secrets.ANGEL_PIN }}
@@ -91,8 +93,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           PAPER_COST_BPS_PER_SIDE: "0"
-          PAPER_ALLOW_OFFSESSION_SCAN: "true"
-          SMARTAPI_MAX_RETRIES: "0"
+          PAPER_ALLOW_OFFSESSION_SCAN: "false"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
