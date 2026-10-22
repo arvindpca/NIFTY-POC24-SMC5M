@@ -283,8 +283,31 @@ def main():
     if outside_session and allow_offsession_scan:
         print(f"OFF-SESSION DIAGNOSTIC SCAN ENABLED | {now.isoformat()} | historical candles only; no real orders.")
     tokens = load_tokens()
-    api = create_data_client()
     state = load_state()
+    # Persist a circuit-breaker cooldown after SmartAPI account/IP throttling.
+    # Avoid repeated scheduled logins/candle calls while the provider is rejecting access.
+    cooldown_until = state.get("smartapi_rate_limit_until")
+    if cooldown_until:
+        try:
+            until = pd.Timestamp(cooldown_until)
+            if until.tzinfo is None:
+                until = until.tz_localize(IST)
+            else:
+                until = until.tz_convert(IST)
+            current = pd.Timestamp.now(tz=IST)
+            if current < until:
+                message = (
+                    f"SMARTAPI COOLDOWN ACTIVE until {until.isoformat()}; "
+                    "skipping API login/polling to avoid repeated access-rate violations."
+                )
+                print(message)
+                log_event("WARNING", "SMARTAPI_COOLDOWN_ACTIVE", message)
+                save_state(state)
+                raise RuntimeError(message)
+            state.pop("smartapi_rate_limit_until", None)
+        except (ValueError, TypeError):
+            state.pop("smartapi_rate_limit_until", None)
+    api = create_data_client()
     raw_by_symbol = {}
     frames = {}
     cycle_id = now.strftime("%Y%m%d-%H%M%S")
@@ -347,6 +370,9 @@ def main():
             log_event("ERROR", "SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER", f"{symbol}: {exc}")
             print(f"RATE LIMIT CIRCUIT BREAKER | symbol={symbol} | stopping this scan to protect the API: {exc}")
             rate_limit_hit = True
+            state["smartapi_rate_limit_until"] = (
+                pd.Timestamp.now(tz=IST) + pd.Timedelta(minutes=60)
+            ).isoformat()
             break
         except Exception as exc:
             diagnostic_counts["fetch_failed"] += 1
@@ -368,6 +394,10 @@ def main():
             "ABORTED_RATE_LIMIT" if rate_limit_hit else "ABORTED_NIFTY_DATA_UNAVAILABLE",
         )
         if rate_limit_hit:
+            state["smartapi_rate_limit_until"] = (
+                pd.Timestamp.now(tz=IST) + pd.Timedelta(minutes=60)
+            ).isoformat()
+            save_state(state)
             message = (
                 "PAPER SCAN FAILED: SmartAPI rate limit blocked the required NIFTY "
                 "candle fetch. No signals were evaluated. Check Angel One SmartAPI "
