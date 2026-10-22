@@ -139,8 +139,11 @@ def fetch_15m_candles(api, exchange, token, lookback_days=10, from_timestamp=Non
         df[col] = pd.to_numeric(df[col], errors="coerce")
     df = df.dropna(subset=["timestamp", "open", "high", "low", "close"])
     df = df.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
-    # Angel One timestamps are treated as candle-start labels; discard forming bars.
-    df = df[df["timestamp"] + pd.Timedelta(minutes=15) <= pd.Timestamp.now(tz=IST)]
+    # SmartAPI returns candle START timestamps. Remove the still-forming candle,
+    # then normalize to END-labelled 15m bars because Strategy B's source logic,
+    # NIFTY/stock alignment, and next-candle paper-entry model use end labels.
+    df = df[df["timestamp"] + pd.Timedelta(minutes=15) <= pd.Timestamp.now(tz=IST)].copy()
+    df["timestamp"] = df["timestamp"] + pd.Timedelta(minutes=15)
     if from_timestamp is None and len(df) < 80:
         raise RuntimeError(f"Insufficient completed 15-minute history ({len(df)} bars) for strategy warm-up.")
     return df.reset_index(drop=True)
