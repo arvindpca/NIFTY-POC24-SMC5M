@@ -9,6 +9,11 @@ on:
     - cron: "40 3 * * 1-5"      # 09:10 IST: starts the day's loop
     - cron: "*/30 4-9 * * 1-5"  # safety net: restarts the loop if it ever stopped mid-session
   workflow_dispatch:
+    inputs:
+      offsession_scan:
+        description: "Test scan outside NSE hours (paper only, historical candles, one cycle)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -97,7 +102,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           PAPER_COST_BPS_PER_SIDE: "0"
-          PAPER_ALLOW_OFFSESSION_SCAN: "false"
+          PAPER_ALLOW_OFFSESSION_SCAN: ${{ inputs.offsession_scan && 'true' || 'false' }}
           PYTHONUNBUFFERED: "1"
         run: |
           git config user.name "github-actions[bot]"
