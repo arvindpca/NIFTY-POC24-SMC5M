@@ -1,0 +1,8 @@
+BACKTEST 2026-10-13 -> 2026-10-22 | symbols ok=173 failed=0 | raw signals=28
+ALL (portfolio-limited): trades=11 win_rate=36.4% net_pnl=Rs1,536 profit_factor=2.19 avg_R=0.01 max_drawdown=Rs-738 (notional Rs50,000/trade, cost 0.0 bps/side)
+ALL, 5 bps/side costs: trades=11 win_rate=36.4% net_pnl=Rs990 profit_factor=1.60 avg_R=0.01 max_drawdown=Rs-838 (notional Rs50,000/trade, cost 5.0 bps/side)
+LONG: trades=5 win_rate=20.0% net_pnl=Rs-205 profit_factor=0.59 avg_R=-0.30 max_drawdown=Rs-168 (notional Rs50,000/trade, cost 0.0 bps/side)
+SHORT: trades=6 win_rate=50.0% net_pnl=Rs1,741 profit_factor=3.21 avg_R=0.26 max_drawdown=Rs-738 (notional Rs50,000/trade, cost 0.0 bps/side)
+Per day net P&L (Rs): 2026-10-19:-205, 2026-10-21:-49, 2026-10-22:1,790
+Exit reasons: TIME_EXIT=6, SL=4, TP=1
+Note: Yahoo 15m OHLCV (volume/prices differ slightly from Angel). Paper simulation, not a forecast.
