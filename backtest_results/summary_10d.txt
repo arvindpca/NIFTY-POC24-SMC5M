@@ -1,8 +1,14 @@
-BACKTEST 2026-10-13 -> 2026-10-22 | symbols ok=173 failed=0 | raw signals=28
-ALL (portfolio-limited): trades=11 win_rate=36.4% net_pnl=Rs1,536 profit_factor=2.19 avg_R=0.01 max_drawdown=Rs-738 (notional Rs50,000/trade, cost 0.0 bps/side)
-ALL, 5 bps/side costs: trades=11 win_rate=36.4% net_pnl=Rs990 profit_factor=1.60 avg_R=0.01 max_drawdown=Rs-838 (notional Rs50,000/trade, cost 5.0 bps/side)
-LONG: trades=5 win_rate=20.0% net_pnl=Rs-205 profit_factor=0.59 avg_R=-0.30 max_drawdown=Rs-168 (notional Rs50,000/trade, cost 0.0 bps/side)
-SHORT: trades=6 win_rate=50.0% net_pnl=Rs1,741 profit_factor=3.21 avg_R=0.26 max_drawdown=Rs-738 (notional Rs50,000/trade, cost 0.0 bps/side)
-Per day net P&L (Rs): 2026-10-19:-205, 2026-10-21:-49, 2026-10-22:1,790
-Exit reasons: TIME_EXIT=6, SL=4, TP=1
+BACKTEST 2026-10-16 -> 2026-10-23 | symbols ok=173 failed=0 | raw signals=20
+ALL (portfolio-limited): trades=6 win_rate=50.0% net_pnl=Rs738 profit_factor=1.41 avg_R=0.10 max_drawdown=Rs-738 (notional Rs50,000/trade, cost 0.0 bps/side)
+ALL, 5 bps/side costs: trades=6 win_rate=50.0% net_pnl=Rs440 profit_factor=1.23 avg_R=0.10 max_drawdown=Rs-838 (notional Rs50,000/trade, cost 5.0 bps/side)
+LONG: trades=1 win_rate=0.0% net_pnl=Rs-1,052 profit_factor=0.00 avg_R=-1.00 max_drawdown=Rs0 (notional Rs50,000/trade, cost 0.0 bps/side)
+SHORT: trades=5 win_rate=60.0% net_pnl=Rs1,790 profit_factor=3.43 avg_R=0.32 max_drawdown=Rs-738 (notional Rs50,000/trade, cost 0.0 bps/side)
+Per day net P&L (Rs): 2026-10-21:-1,052, 2026-10-22:1,790
+Exit reasons: TIME_EXIT=4, SL=2
+NIFTY 1H trend 2026-10-16: POSITIVE=0 NEGATIVE=0 NEUTRAL=25 (15m bars)
+NIFTY 1H trend 2026-10-19: POSITIVE=0 NEGATIVE=0 NEUTRAL=25 (15m bars)
+NIFTY 1H trend 2026-10-21: POSITIVE=4 NEGATIVE=14 NEUTRAL=7 (15m bars)
+NIFTY 1H trend 2026-10-22: POSITIVE=0 NEGATIVE=23 NEUTRAL=2 (15m bars)
+NIFTY 1H trend 2026-10-23: POSITIVE=0 NEGATIVE=0 NEUTRAL=25 (15m bars)
+Raw signals by day: 2026-10-21:1, 2026-10-22:19
 Note: Yahoo 15m OHLCV (volume/prices differ slightly from Angel). Paper simulation, not a forecast.
