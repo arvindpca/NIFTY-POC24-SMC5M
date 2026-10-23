@@ -308,3 +308,4 @@ timestamp,level,event,detail
 2026-10-22T09:02:11.399144+00:00,WARNING,SMARTAPI_COOLDOWN_YAHOO_FALLBACK,SMARTAPI COOLDOWN ACTIVE until 2026-10-22T15:10:24.889274+05:30; using Yahoo 15m fallback for this paper scan.
 2026-10-22T09:56:42.429159+00:00,WARNING,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,SBICARD: SmartAPI rate limit for token 17971: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
 2026-10-23T04:27:09.067590+00:00,WARNING,SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER,NIFTY: SmartAPI rate limit for token 99926000: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-10-23T04:30:20.001276+00:00,WARNING,SMARTAPI_COOLDOWN_YAHOO_FALLBACK,SMARTAPI COOLDOWN ACTIVE until 2026-10-23T10:57:09.067700+05:30; using Yahoo 15m fallback for this paper scan.
