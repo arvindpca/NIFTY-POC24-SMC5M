@@ -6,8 +6,15 @@ on:
     paths-ignore:
       - "data/**"
   schedule:
-    - cron: "40 3 * * 1-5"      # 09:10 IST: starts the day's loop
-    - cron: "*/30 4-9 * * 1-5"  # safety net: restarts the loop if it ever stopped mid-session
+    # GitHub delays cron jobs heavily at :00/:30 (runs started 6h late on 21-22 Oct), so use odd minutes
+    # and several attempts. Extra attempts are harmless: the concurrency group lets only one loop run and a
+    # queued attempt exits immediately when the market is closed or the loop already handled the day.
+    - cron: "7 3 * * 1-5"       # 08:37 IST
+    - cron: "23 3 * * 1-5"      # 08:53 IST
+    - cron: "41 3 * * 1-5"      # 09:11 IST
+    - cron: "13,43 4-9 * * 1-5" # safety net: restarts the loop if it ever stopped mid-session
+  repository_dispatch:
+    types: [start-paper-loop]   # for an external, reliable scheduler (see README)
   workflow_dispatch:
     inputs:
       offsession_scan:
@@ -92,6 +99,8 @@ jobs:
           PERSIST_GIT: "true"
           LOOP_MINUTES: "385"
           PAPER_SCAN_BATCH_SIZE: "35"
+          PAPER_UNIVERSE_SOURCE: "yahoo"
+          PAPER_YAHOO_WORKERS: "8"
           SMARTAPI_MIN_CALL_GAP_SEC: "0.5"
           SMARTAPI_MAX_CALL_GAP_SEC: "3.0"
           SMARTAPI_MAX_RETRIES: "1"

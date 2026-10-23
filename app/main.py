@@ -15,7 +15,7 @@ from app.config import validate_config
 from app.notifications import send_telegram, entry_alert, close_alert
 from app.smartapi_client import create_data_client, fetch_15m_candles, fetch_yahoo_15m_candles, SmartAPIRateLimitError
 from app.storage import load_state, save_state, save_trade, log_event, export_excel, DATA_DIR, FIELDS
-from app.strategy_adapter import get_latest_signal
+from app.strategy_adapter import get_latest_signal, nifty_trend_frame
 from app.rules import exit_decision, is_stale_entry, target_for
 import strategy_b_original as original
 
@@ -97,13 +97,45 @@ def record_scan_diagnostic(cycle_id, symbol, stage, reason, detail=""):
 
 
 def completed_15m(raw):
-    d = original.prepare_symbol_from_15m(original.normalize_columns(raw))
+    """Completed END-labelled 15m bars (cache is already end-labelled; no indicators needed here)."""
+    d = original.normalize_columns(raw)
+    d["timestamp"] = pd.to_datetime(d["timestamp"], errors="coerce")
+    d = d.dropna(subset=["timestamp"])
+    d["timestamp"] = d["timestamp"].dt.tz_localize(IST) if d["timestamp"].dt.tz is None else d["timestamp"].dt.tz_convert(IST)
     now = pd.Timestamp.now(tz=IST)
-    # END-labelled 15m bars only; ensure the bar has actually ended.
     return d[d["timestamp"] <= now.floor("15min")].sort_values("timestamp").reset_index(drop=True)
 
 
-def load_or_update_candle_cache(api, symbol, item):
+def safe_client():
+    """One SmartAPI login; if Angel is unreachable, return None so the scan runs on Yahoo instead of dying."""
+    try:
+        return create_data_client()
+    except Exception as exc:
+        log_event("WARNING", "SMARTAPI_LOGIN_FAILED_YAHOO_FALLBACK", str(exc)[:300])
+        print(f"SmartAPI login failed; using Yahoo fallback this cycle: {exc}")
+        return None
+
+
+def bulk_yahoo_fetch(symbols, workers=None):
+    """Download 15m history for many symbols in parallel (network only; no shared-file writes in threads)."""
+    from concurrent.futures import ThreadPoolExecutor
+    workers = workers or int(os.getenv("PAPER_YAHOO_WORKERS", "8"))
+
+    def one(sym):
+        last = None
+        for attempt in range(3):
+            try:
+                return sym, fetch_yahoo_15m_candles(sym, lookback_days=10), None
+            except Exception as exc:  # retry transient 429/timeouts
+                last = exc
+                time.sleep(1.5 * (attempt + 1))
+        return sym, None, last
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return {sym: (df, err) for sym, df, err in pool.map(one, symbols)}
+
+
+def load_or_update_candle_cache(api, symbol, item, prefetched=None):
     """Keep direct 15m candles locally and request only data newer than the cache."""
     cache_dir = DATA_DIR / "candle_cache_15m_end_labeled_v2"
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -118,7 +150,10 @@ def load_or_update_candle_cache(api, symbol, item):
             log_event("WARNING", "CANDLE_CACHE_READ_FAILED", f"{symbol}: {exc}")
             cached = None
 
-    if api is None:
+    if prefetched is not None:
+        fetched = prefetched
+        mode = "YAHOO_BULK"
+    elif api is None:
         # SmartAPI is in cooldown or has rate-limited this cycle. Use the
         # second repository's Yahoo historical warm-up approach, without
         # changing Strategy B's signal rules.
@@ -316,12 +351,12 @@ def main(session=None):
                 log_event("WARNING", "SMARTAPI_COOLDOWN_YAHOO_FALLBACK", message)
             else:
                 state.pop("smartapi_rate_limit_until", None)
-                api = session or create_data_client()
+                api = session or safe_client()
         except (ValueError, TypeError):
             state.pop("smartapi_rate_limit_until", None)
-            api = session or create_data_client()
+            api = session or safe_client()
     else:
-        api = session or create_data_client()
+        api = session or safe_client()
     raw_by_symbol = {}
     frames = {}
     cycle_id = now.strftime("%Y%m%d-%H%M%S")
@@ -335,9 +370,15 @@ def main(session=None):
     # Default 35 stocks per cycle: at 2s pacing this is about 70s plus response
     # latency. A 174-stock universe rotates in about 25 minutes. NIFTY and any
     # open/pending-position symbols are fetched every cycle as priorities.
+    # PAPER_UNIVERSE_SOURCE=yahoo (default): the WHOLE universe is scanned every cycle using parallel
+    # Yahoo downloads, and SmartAPI is used only for NIFTY and open/pending symbols (a handful of calls,
+    # far below Angel's rate limit). Strategy B only evaluates the newest 15m bar, so scanning just
+    # 35/174 stocks per cycle meant ~80% of retest candles were never checked.
+    # PAPER_UNIVERSE_SOURCE=angel keeps the old rotating SmartAPI batches.
+    universe_source = os.getenv("PAPER_UNIVERSE_SOURCE", "yahoo").strip().lower()
     batch_size = max(1, min(int(os.getenv("PAPER_SCAN_BATCH_SIZE", "35")), 50))
     cursor = int(state.get("scan_cursor", 0) or 0) % max(1, len(universe))
-    if universe:
+    if universe_source == "angel" and universe:
         rotating = [universe[(cursor + i) % len(universe)] for i in range(min(batch_size, len(universe)))]
         state["scan_cursor"] = (cursor + len(rotating)) % len(universe)
     else:
@@ -358,6 +399,7 @@ def main(session=None):
         f"symbols={','.join(selected)}"
     )
     pending_symbols = [(symbol, tokens[symbol]) for symbol in selected]
+    bulk_symbols = [s_ for s_ in universe if s_ not in selected] if universe_source != "angel" else []
 
     rate_limit_hit = False
     scan_started = time.monotonic()
@@ -438,9 +480,32 @@ def main(session=None):
         print("PAPER SCAN FAILED: NIFTY data unavailable; no signals evaluated.")
         raise RuntimeError("NIFTY data unavailable; refusing to report a successful scan.")
     nifty_raw = raw_by_symbol["NIFTY"]
+    if bulk_symbols:
+        bulk_started = time.monotonic()
+        downloaded = bulk_yahoo_fetch(bulk_symbols)
+        for symbol in bulk_symbols:
+            df, err = downloaded.get(symbol, (None, "missing"))
+            if err is not None or df is None:
+                diagnostic_counts["fetch_failed"] += 1
+                record_scan_diagnostic(cycle_id, symbol, "FETCH", "YAHOO_BULK_FAILED", err)
+                log_event("ERROR", "CANDLE_FETCH_FAILED", f"{symbol}: yahoo bulk: {err}")
+                continue
+            try:
+                raw, cache_mode, fetched_rows = load_or_update_candle_cache(None, symbol, tokens[symbol], prefetched=df)
+                raw_by_symbol[symbol] = raw
+                frames[symbol] = completed_15m(raw)
+                fetched_count += 1
+                diagnostic_counts["fetch_ok"] += 1
+                cache_modes["YAHOO_FALLBACK"] = cache_modes.get("YAHOO_FALLBACK", 0) + 1
+            except Exception as exc:
+                diagnostic_counts["fetch_failed"] += 1
+                record_scan_diagnostic(cycle_id, symbol, "FETCH", "YAHOO_BULK_CACHE_FAILED", exc)
+                log_event("ERROR", "CANDLE_FETCH_FAILED", f"{symbol}: yahoo bulk cache: {exc}")
+        print(f"YAHOO_BULK | symbols={len(bulk_symbols)} | ok={sum(1 for v in downloaded.values() if v[1] is None)} | seconds={time.monotonic()-bulk_started:.1f}")
     process_pending(state, frames)
     close_positions(state, frames)
 
+    nifty_trend = nifty_trend_frame(nifty_raw)  # computed ONCE per cycle, shared by every stock
     for symbol, raw in raw_by_symbol.items():
         if symbol == "NIFTY":
             continue
@@ -456,7 +521,7 @@ def main(session=None):
             print(f"STOCK SKIPPED | {symbol} | reason=NO_NEW_CANDLE | candle={candle_key}")
             continue
         try:
-            signal = get_latest_signal(symbol, raw, nifty_raw)
+            signal = get_latest_signal(symbol, raw, nifty_raw, nifty_trend=nifty_trend)
             # Mark the candle only after successful evaluation. If evaluation raises,
             # the next scheduled run must be allowed to retry the same candle.
             state["last_candle"][symbol] = candle_key

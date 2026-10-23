@@ -401,11 +401,16 @@ def prepare_symbol(df5):
     d15 = align_htf(d15, htf)
     return d15
 
-def prepare_symbol_from_15m(df15):
-    """Prepare direct Angel One 15-minute candles without resampling 5-minute bars.
+def prepare_symbol_from_15m(df15, end_labelled=False, wick_zones=True):
+    """Prepare direct 15-minute candles without resampling 5-minute bars.
 
-    Input timestamps are treated as candle-start labels. Convert them to end labels
-    so existing completed-candle checks and signal timestamps retain their meaning.
+    By default input timestamps are treated as candle-start labels and converted to
+    end labels. The live scanner's candle cache is ALREADY end-labelled
+    (app.smartapi_client adds +15 min), so it passes end_labelled=True; shifting
+    twice made every bar look one candle newer than it was and delayed signals by
+    a full 15-minute bar.
+    wick_zones=False skips the 4H wick-zone columns, which the live signal path
+    never reads (they are slow: a per-row pandas loop).
     Strategy conditions and indicator parameters are intentionally unchanged.
     """
     if df15 is None or df15.empty:
@@ -417,10 +422,12 @@ def prepare_symbol_from_15m(df15):
         d15["timestamp"] = d15["timestamp"].dt.tz_localize(IST, ambiguous="NaT", nonexistent="shift_forward")
     else:
         d15["timestamp"] = d15["timestamp"].dt.tz_convert(IST)
-    d15["timestamp"] = d15["timestamp"] + pd.Timedelta(minutes=15)
+    if not end_labelled:
+        d15["timestamp"] = d15["timestamp"] + pd.Timedelta(minutes=15)
     d15 = d15.sort_values("timestamp").drop_duplicates("timestamp", keep="last").reset_index(drop=True)
     d15 = add_indicators(d15)
-    d15 = add_4h_wick_zones(d15)
+    if wick_zones:
+        d15 = add_4h_wick_zones(d15)
     htf = make_htf_trend(d15)
     d15 = align_htf(d15, htf)
     return d15

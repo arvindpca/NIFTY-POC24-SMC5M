@@ -12,6 +12,7 @@ This repository is **paper-trading only**. It does not place orders. `strategy_b
 - Entry cutoff 14:20 IST; user-selected force exit is the completed end-labelled 15-minute candle at 15:00 IST (exit at that candle's close, before same-bar SL/TP checks).
 - Maximum 5 concurrent positions, no same-symbol overlap, maximum 5 entries per day.
 - One login per day: `app.loop` scans after every 15-minute candle (Actions job runs the whole NSE session), re-logging in only if Angel reports an invalid session.
+- Fast scan: the whole universe is scanned EVERY cycle (parallel Yahoo 15m download, `PAPER_UNIVERSE_SOURCE=yahoo`); SmartAPI is used only for NIFTY and open/pending symbols. Set `PAPER_UNIVERSE_SOURCE=angel` for the old rotating SmartAPI batches. NIFTY trend is computed once per cycle. If Angel login fails, the scan continues on Yahoo.
 - Restart-safe JSON state, CSV trade history and system log; optional Telegram alerts.
 - No Angel One order-placement method is called.
 
@@ -58,3 +59,8 @@ Run the **Validate Strategy B** workflow to compile Python and execute unit test
 - GitHub Actions is not an always-on trading server; alerts can arrive late. Entries are simulated at the next 15-minute candle open after that candle is available in completed history, so the alert may arrive after the simulated entry. Signals older than the 20-minute grace are skipped rather than backfilled.
 - Paper state is committed to this private repository. Keep repository access restricted.
 - No real orders are sent; `PAPER_ONLY` must remain `true`.
+
+## Reliable start (GitHub cron can be hours late)
+
+The workflow has several off-peak cron attempts, but GitHub may still delay them. For a guaranteed 09:10 IST start, create a free job at cron-job.org (Mon-Fri 09:10 IST) that POSTs to
+`https://api.github.com/repos/arvindpca/NIFTY-POC24-SMC5M/dispatches` with header `Authorization: Bearer <fine-grained token, Contents: write>` and body `{"event_type":"start-paper-loop"}`.

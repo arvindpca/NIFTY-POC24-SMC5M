@@ -67,7 +67,11 @@ def run(loop_minutes=None, main_fn=None, session_factory=None, now_fn=None, slee
         return 0
     if session_factory is None:
         from app.smartapi_client import create_data_client as session_factory
-    session = session_factory()
+    try:
+        session = session_factory()
+    except Exception as exc:  # Angel down/locked: keep scanning on Yahoo; main() retries login per cycle
+        print(f"SMARTAPI_LOGIN_FAILED at loop start, continuing without a shared session: {exc}")
+        session = None
     cycles = failures = 0
     try:
         while True:
@@ -95,7 +99,8 @@ def run(loop_minutes=None, main_fn=None, session_factory=None, now_fn=None, slee
             sleep_fn(wait)
     finally:
         try:
-            session.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
+            if session is not None:
+                session.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
         except Exception:
             pass
 

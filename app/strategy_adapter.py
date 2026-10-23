@@ -111,17 +111,30 @@ def _latest_setup_signal(df, nifty_trend):
     return None
 
 
-def get_latest_signal(symbol, raw_15m, nifty_15m):
-    """Return a signal only for the newest completed direct 15m candle, or None."""
-    stock = original.normalize_columns(raw_15m)
+def nifty_trend_frame(nifty_15m):
+    """NIFTY 1H trend per 15m bar. Compute ONCE per scan cycle and reuse for every stock."""
     nifty = original.normalize_columns(nifty_15m)
-    if stock is None or nifty is None:
+    if nifty is None:
         return None
-    stock15 = original.prepare_symbol_from_15m(stock)
-    nifty15 = original.prepare_symbol_from_15m(nifty)
-    nifty_trend = nifty15[["timestamp", "stock_htf_trend"]].rename(
+    nifty15 = original.prepare_symbol_from_15m(nifty, end_labelled=True, wick_zones=False)
+    return nifty15[["timestamp", "stock_htf_trend"]].rename(
         columns={"stock_htf_trend": "nifty_trend"}
     )
+
+
+def get_latest_signal(symbol, raw_15m, nifty_15m, nifty_trend=None):
+    """Return a signal only for the newest completed end-labelled 15m candle, or None.
+
+    Pass `nifty_trend` (from nifty_trend_frame) to avoid recomputing NIFTY per stock.
+    """
+    stock = original.normalize_columns(raw_15m)
+    if stock is None:
+        return None
+    if nifty_trend is None:
+        nifty_trend = nifty_trend_frame(nifty_15m)
+    if nifty_trend is None:
+        return None
+    stock15 = original.prepare_symbol_from_15m(stock, end_labelled=True, wick_zones=False)
     aligned = pd.merge_asof(
         stock15.sort_values("timestamp"),
         nifty_trend.sort_values("timestamp"),
