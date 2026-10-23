@@ -6,6 +6,9 @@ on:
       days:
         description: "Number of recent completed trading days to replay"
         default: "10"
+      include_today:
+        description: "Include today's (completed) session"
+        default: "false"
 
 permissions:
   contents: write
@@ -27,6 +30,7 @@ jobs:
         env:
           PAPER_ONLY: "true"
           BACKTEST_DAYS: ${{ inputs.days }}
+          BACKTEST_INCLUDE_TODAY: ${{ inputs.include_today }}
           PYTHONUNBUFFERED: "1"
         run: python -u -m app.backtest
       - uses: actions/upload-artifact@v4

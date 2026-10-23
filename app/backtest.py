@@ -115,7 +115,8 @@ def main():
         raise SystemExit(f"NIFTY data unavailable: {err}")
     nifty_trend = nifty_trend_frame(nifty_df)
     today = pd.Timestamp.now(tz=IST).date()
-    days = sorted({t.date() for t in nifty_df["timestamp"] if t.date() < today})[-TEST_DAYS:]
+    include_today = os.getenv("BACKTEST_INCLUDE_TODAY", "false").lower() == "true"
+    days = sorted({t.date() for t in nifty_df["timestamp"] if (t.date() <= today if include_today else t.date() < today)})[-TEST_DAYS:]
     test_dates = set(days)
     print(f"Test window: {days[0]} to {days[-1]} ({len(days)} trading days)")
     candidates, ok, failed = [], 0, []
@@ -141,6 +142,13 @@ def main():
         d["day"] = d["entry_time"].dt.date
         lines.append("Per day net P&L (Rs): " + ", ".join(f"{k}:{v:,.0f}" for k, v in d.groupby("day")["gross_pnl"].sum().items()))
         lines.append("Exit reasons: " + ", ".join(f"{k}={v}" for k, v in d["reason"].value_counts().items()))
+    nt = nifty_trend[nifty_trend["timestamp"].dt.date.isin(test_dates)].copy()
+    nt["day"] = nt["timestamp"].dt.date
+    for day, g in nt.groupby("day"):
+        c = g["nifty_trend"].value_counts().to_dict()
+        lines.append(f"NIFTY 1H trend {day}: POSITIVE={c.get('POSITIVE',0)} NEGATIVE={c.get('NEGATIVE',0)} NEUTRAL={c.get('NEUTRAL',0)} (15m bars)")
+    if candidates:
+        lines.append("Raw signals by day: " + ", ".join(f"{k}:{v}" for k, v in pd.Series([t["signal_time"].date() for t in candidates]).value_counts().sort_index().items()))
     if failed:
         lines.append("Data failures: " + ", ".join(failed[:20]))
     lines.append("Note: Yahoo 15m OHLCV (volume/prices differ slightly from Angel). Paper simulation, not a forecast.")
