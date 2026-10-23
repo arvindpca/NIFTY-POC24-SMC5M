@@ -16,6 +16,7 @@ from app.notifications import send_telegram, entry_alert, close_alert
 from app.smartapi_client import create_data_client, fetch_15m_candles, fetch_yahoo_15m_candles, SmartAPIRateLimitError
 from app.storage import load_state, save_state, save_trade, log_event, export_excel, DATA_DIR, FIELDS
 from app.strategy_adapter import get_latest_signal, nifty_trend_frame
+from app import data_quality
 from app.rules import exit_decision, is_stale_entry, target_for
 import strategy_b_original as original
 
@@ -502,6 +503,43 @@ def main(session=None):
                 record_scan_diagnostic(cycle_id, symbol, "FETCH", "YAHOO_BULK_CACHE_FAILED", exc)
                 log_event("ERROR", "CANDLE_FETCH_FAILED", f"{symbol}: yahoo bulk cache: {exc}")
         print(f"YAHOO_BULK | symbols={len(bulk_symbols)} | ok={sum(1 for v in downloaded.values() if v[1] is None)} | seconds={time.monotonic()-bulk_started:.1f}")
+    # ---- Data-quality gate: only validated frames may produce signals ----
+    dq_now = pd.Timestamp.now(tz=IST)
+    dq_results = {s_: data_quality.check_frame(f_, dq_now, require_volume=(s_ != "NIFTY")) for s_, f_ in frames.items()}
+    blocked, _ = data_quality.summarize(dq_results)
+    for attempt in range(int(os.getenv("PAPER_DQ_RETRIES", "2"))):
+        retry = [s_ for s_, issues in blocked.items() if any(i.startswith(("STALE_LAST_BAR", "LATEST_VOLUME", "MISSING_BARS")) for i in issues)]
+        if not retry:
+            break
+        time.sleep(float(os.getenv("PAPER_DQ_RETRY_WAIT_SEC", "20")))
+        refreshed = bulk_yahoo_fetch(retry)
+        for s_ in retry:
+            df_, err_ = refreshed.get(s_, (None, "missing"))
+            if err_ is not None or df_ is None:
+                continue
+            try:
+                raw_, _, _ = load_or_update_candle_cache(None, s_, tokens[s_], prefetched=df_)
+                raw_by_symbol[s_] = raw_
+                frames[s_] = completed_15m(raw_)
+                if s_ == "NIFTY":
+                    nifty_raw = raw_
+                dq_results[s_] = data_quality.check_frame(frames[s_], pd.Timestamp.now(tz=IST), require_volume=(s_ != "NIFTY"))
+            except Exception as exc:
+                log_event("ERROR", "DQ_REFRESH_FAILED", f"{s_}: {exc}")
+        blocked, _ = data_quality.summarize(dq_results)
+        print(f"DATA_QUALITY retry {attempt+1}: still_blocked={len(blocked)}")
+    dq_warn = sum(1 for _, w_ in dq_results.values() if w_)
+    print(f"DATA_QUALITY | checked={len(dq_results)} | blocked={len(blocked)} | warnings={dq_warn}")
+    if blocked:
+        sample = "; ".join(f"{k}:{','.join(v)}" for k, v in list(blocked.items())[:15])
+        log_event("WARNING", "DATA_QUALITY_BLOCKED", f"{len(blocked)}/{len(dq_results)} blocked this cycle. {sample}"[:900])
+        for s_, issues in blocked.items():
+            record_scan_diagnostic(cycle_id, s_, "DATA_QUALITY", "BLOCKED", ",".join(issues))
+    skip_signals = "NIFTY" in blocked
+    if skip_signals:
+        log_event("ERROR", "DATA_QUALITY_NIFTY_BLOCKED", ",".join(blocked["NIFTY"]))
+        print("NIFTY data failed quality checks; no new signals this cycle.")
+
     process_pending(state, frames)
     close_positions(state, frames)
 
@@ -509,6 +547,9 @@ def main(session=None):
     for symbol, raw in raw_by_symbol.items():
         if symbol == "NIFTY":
             continue
+        if skip_signals or symbol in blocked:
+            diagnostic_counts["invalid_frame"] += 1
+            continue  # never evaluate (or mark as evaluated) a candle that failed data-quality checks
         if symbol not in frames or frames[symbol].empty:
             diagnostic_counts["invalid_frame"] += 1
             record_scan_diagnostic(cycle_id, symbol, "STRATEGY", "NO_COMPLETED_CANDLES")

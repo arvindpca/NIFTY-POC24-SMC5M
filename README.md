@@ -13,6 +13,7 @@ This repository is **paper-trading only**. It does not place orders. `strategy_b
 - Maximum 5 concurrent positions, no same-symbol overlap, maximum 5 entries per day.
 - One login per day: `app.loop` scans after every 15-minute candle (Actions job runs the whole NSE session), re-logging in only if Angel reports an invalid session.
 - Fast scan: the whole universe is scanned EVERY cycle (parallel Yahoo 15m download, `PAPER_UNIVERSE_SOURCE=yahoo`); SmartAPI is used only for NIFTY and open/pending symbols. Set `PAPER_UNIVERSE_SOURCE=angel` for the old rotating SmartAPI batches. NIFTY trend is computed once per cycle. If Angel login fails, the scan continues on Yahoo.
+- Data-quality gate (`app/data_quality.py`): before any signal, every frame must be fresh (latest completed bar present), have no missing bars in the setup window, consistent OHLC, positive prices, no duplicate timestamps and non-zero latest volume (NIFTY index exempt). Failing symbols are re-downloaded up to twice in the same cycle; if still bad they are skipped (never traded on bad data) and logged as `DATA_QUALITY_BLOCKED`. If NIFTY fails, no signals are evaluated that cycle.
 - Restart-safe JSON state, CSV trade history and system log; optional Telegram alerts.
 - No Angel One order-placement method is called.
 
