@@ -1,0 +1,36 @@
+name: Backtest 10 Days (paper research, no orders)
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Number of recent completed trading days to replay"
+        default: "10"
+
+permissions:
+  contents: read
+
+jobs:
+  backtest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - name: Replay live logic on recent Yahoo 15m history
+        env:
+          PAPER_ONLY: "true"
+          BACKTEST_DAYS: ${{ inputs.days }}
+          PYTHONUNBUFFERED: "1"
+        run: python -u -m app.backtest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backtest-10d
+          path: data/backtest/
