@@ -24,7 +24,7 @@ MAX_OPEN = 5
 MAX_PER_DAY = 5
 RR = 1.5
 TEST_DAYS = int(os.getenv("BACKTEST_DAYS", "10"))
-OUT_DIR = Path(os.getenv("BACKTEST_OUT", "data/backtest"))
+OUT_DIR = Path(os.getenv("BACKTEST_OUT", "backtest_results"))
 
 
 def prepare(raw, nifty_trend):
