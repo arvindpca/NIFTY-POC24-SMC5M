@@ -7,56 +7,56 @@ NIFTY buy&hold   ALL CAGR   +8.5%  Sharpe +0.60  maxDD  -38.4%  x2.60
                   H2 CAGR   +9.1%  Sharpe +0.70  maxDD  -17.2%  x1.67
 EqualWt universe ALL CAGR  +24.0%  Sharpe +1.29  maxDD  -44.8%  x12.58   <- survivorship-biased reference (no costs)
 
-[fail] @10bps A TREND (55d breakout, 20d exit, 10 pos, Nifty>200DMA) | trades=420 win=43%
-      ALL CAGR   +4.9%  Sharpe +0.40  maxDD  -12.7%  x1.07
-      H1  CAGR   +nan%  Sharpe +nan  maxDD    nan%  xnan
-      H2  CAGR   +4.9%  Sharpe +0.40  maxDD  -12.7%  x1.07
-[fail] @10bps B MOMENTUM (6-1m, top15, monthly, Nifty>200DMA)
-      ALL CAGR  +11.4%  Sharpe +0.90  maxDD   -7.5%  x1.15
-      H1  CAGR   +nan%  Sharpe +nan  maxDD    nan%  xnan
-      H2  CAGR  +11.4%  Sharpe +0.90  maxDD   -7.5%  x1.15
-[fail] @20bps A TREND (55d breakout, 20d exit, 10 pos, Nifty>200DMA) | trades=420 win=43%
-      ALL CAGR   +4.4%  Sharpe +0.36  maxDD  -12.8%  x1.06
-      H1  CAGR   +nan%  Sharpe +nan  maxDD    nan%  xnan
-      H2  CAGR   +4.4%  Sharpe +0.36  maxDD  -12.8%  x1.06
-[fail] @20bps B MOMENTUM (6-1m, top15, monthly, Nifty>200DMA)
-      ALL CAGR  +10.7%  Sharpe +0.86  maxDD   -7.5%  x1.14
-      H1  CAGR   +nan%  Sharpe +nan  maxDD    nan%  xnan
-      H2  CAGR  +10.7%  Sharpe +0.86  maxDD   -7.5%  x1.14
+[PASS] @10bps A TREND (55d breakout, 20d exit, 10 pos, Nifty>200DMA) | trades=418 win=44%
+      ALL CAGR  +23.5%  Sharpe +1.21  maxDD  -37.5%  x11.94
+      H1  CAGR  +17.7%  Sharpe +0.99  maxDD  -37.5%  x2.62
+      H2  CAGR  +29.4%  Sharpe +1.42  maxDD  -25.5%  x4.53
+[PASS] @10bps B MOMENTUM (6-1m, top15, monthly, Nifty>200DMA)
+      ALL CAGR  +28.3%  Sharpe +1.39  maxDD  -30.6%  x18.64
+      H1  CAGR  +22.0%  Sharpe +1.18  maxDD  -30.6%  x3.23
+      H2  CAGR  +34.7%  Sharpe +1.58  maxDD  -16.3%  x5.73
+[PASS] @20bps A TREND (55d breakout, 20d exit, 10 pos, Nifty>200DMA) | trades=419 win=43%
+      ALL CAGR  +22.7%  Sharpe +1.18  maxDD  -38.4%  x11.07
+      H1  CAGR  +17.0%  Sharpe +0.95  maxDD  -38.4%  x2.52
+      H2  CAGR  +28.6%  Sharpe +1.38  maxDD  -25.9%  x4.36
+[PASS] @20bps B MOMENTUM (6-1m, top15, monthly, Nifty>200DMA)
+      ALL CAGR  +27.2%  Sharpe +1.35  maxDD  -31.7%  x16.96
+      H1  CAGR  +21.0%  Sharpe +1.14  maxDD  -31.7%  x3.08
+      H2  CAGR  +33.6%  Sharpe +1.54  maxDD  -16.3%  x5.46
 
 YEARLY RETURNS @10bps (%):
 year   NIFTY   A-trend   B-mom
-2015     -8.6       nan      nan
-2016      5.1       nan      nan
-2017     28.7       nan      nan
-2018      4.0       nan      nan
-2019     12.7       nan      nan
-2020     14.8       nan      nan
-2021     23.8       nan      nan
-2022      2.7       nan      nan
-2023     19.4       nan      nan
-2024      8.8       nan      nan
-2025     10.1       nan      nan
+2015     -8.6      -1.4      8.3
+2016      5.1      11.4     13.2
+2017     28.7     111.8     98.4
+2018      4.0      -4.3    -15.7
+2019     12.7      -8.7      9.9
+2020     14.8      34.1     47.7
+2021     23.8      89.6     70.4
+2022      2.7      -8.5      6.8
+2023     19.4      86.6     78.2
+2024      8.8      24.6     38.5
+2025     10.1      12.2     32.3
 2026    -13.6      -9.3     -6.7
 
 NEIGHBOURS @10bps (primary marked *): does it survive small parameter changes?
-  A brk=40 exit=10 : fail | H1 +nan% H2 +9.6% | all CAGR   +9.6%  Sharpe +0.70  maxDD  -17.5%  x1.13
-  A brk=40 exit=20 : fail | H1 +nan% H2 +5.5% | all CAGR   +5.5%  Sharpe +0.44  maxDD  -12.5%  x1.07
-  A brk=40 exit=30 : fail | H1 +nan% H2 +57.8% | all CAGR  +57.8%  Sharpe +2.37  maxDD  -14.3%  x1.82
-  A brk=55 exit=10 : fail | H1 +nan% H2 +10.0% | all CAGR  +10.0%  Sharpe +0.72  maxDD  -17.2%  x1.13
-  A brk=55 exit=20*: fail | H1 +nan% H2 +4.9% | all CAGR   +4.9%  Sharpe +0.40  maxDD  -12.7%  x1.07
-  A brk=55 exit=30 : fail | H1 +nan% H2 +57.8% | all CAGR  +57.8%  Sharpe +2.37  maxDD  -14.3%  x1.82
-  A brk=80 exit=10 : fail | H1 +nan% H2 +9.3% | all CAGR   +9.3%  Sharpe +0.67  maxDD  -15.8%  x1.12
-  A brk=80 exit=20 : fail | H1 +nan% H2 +8.7% | all CAGR   +8.7%  Sharpe +0.62  maxDD  -10.8%  x1.12
-  A brk=80 exit=30 : fail | H1 +nan% H2 +56.0% | all CAGR  +56.0%  Sharpe +2.28  maxDD  -15.5%  x1.79
-  B look=90 top10 : fail | H1 +nan% H2 +18.7% | all CAGR  +18.7%  Sharpe +1.23  maxDD   -8.8%  x1.25
-  B look=90 top15 : fail | H1 +nan% H2 +12.2% | all CAGR  +12.2%  Sharpe +0.94  maxDD   -7.2%  x1.16
-  B look=90 top20 : fail | H1 +nan% H2 +9.3% | all CAGR   +9.3%  Sharpe +0.78  maxDD   -7.5%  x1.12
-  B look=126 top10 : fail | H1 +nan% H2 +11.8% | all CAGR  +11.8%  Sharpe +0.84  maxDD   -8.2%  x1.16
-  B look=126 top15*: fail | H1 +nan% H2 +11.4% | all CAGR  +11.4%  Sharpe +0.90  maxDD   -7.5%  x1.15
-  B look=126 top20 : fail | H1 +nan% H2 +6.9% | all CAGR   +6.9%  Sharpe +0.60  maxDD   -6.6%  x1.09
-  B look=189 top10 : fail | H1 +nan% H2 +0.2% | all CAGR   +0.2%  Sharpe +0.08  maxDD  -10.3%  x1.00
-  B look=189 top15 : fail | H1 +nan% H2 +0.5% | all CAGR   +0.5%  Sharpe +0.10  maxDD   -8.8%  x1.01
-  B look=189 top20 : fail | H1 +nan% H2 +1.0% | all CAGR   +1.0%  Sharpe +0.14  maxDD   -9.7%  x1.01
+  A brk=40 exit=10 : PASS | H1 +15.3% H2 +28.0% | all CAGR  +21.5%  Sharpe +1.19  maxDD  -31.8%  x9.85
+  A brk=40 exit=20 : PASS | H1 +20.0% H2 +28.2% | all CAGR  +24.0%  Sharpe +1.26  maxDD  -33.5%  x12.53
+  A brk=40 exit=30 : PASS | H1 +20.3% H2 +30.8% | all CAGR  +25.4%  Sharpe +1.27  maxDD  -26.9%  x14.27
+  A brk=55 exit=10 : PASS | H1 +13.4% H2 +26.0% | all CAGR  +19.4%  Sharpe +1.12  maxDD  -32.7%  x8.07
+  A brk=55 exit=20*: PASS | H1 +17.7% H2 +29.4% | all CAGR  +23.5%  Sharpe +1.21  maxDD  -37.5%  x11.94
+  A brk=55 exit=30 : PASS | H1 +18.5% H2 +32.5% | all CAGR  +25.3%  Sharpe +1.28  maxDD  -26.2%  x14.18
+  A brk=80 exit=10 : PASS | H1 +17.0% H2 +30.1% | all CAGR  +23.3%  Sharpe +1.30  maxDD  -26.4%  x11.74
+  A brk=80 exit=20 : PASS | H1 +19.0% H2 +32.0% | all CAGR  +25.2%  Sharpe +1.30  maxDD  -29.7%  x14.11
+  A brk=80 exit=30 : PASS | H1 +16.3% H2 +36.9% | all CAGR  +26.1%  Sharpe +1.29  maxDD  -27.8%  x15.24
+  B look=90 top10 : PASS | H1 +33.2% H2 +45.3% | all CAGR  +39.1%  Sharpe +1.70  maxDD  -21.3%  x48.61
+  B look=90 top15 : PASS | H1 +27.1% H2 +38.3% | all CAGR  +32.6%  Sharpe +1.58  maxDD  -26.5%  x27.68
+  B look=90 top20 : PASS | H1 +24.3% H2 +36.7% | all CAGR  +30.4%  Sharpe +1.56  maxDD  -26.3%  x22.71
+  B look=126 top10 : PASS | H1 +22.8% H2 +36.4% | all CAGR  +29.4%  Sharpe +1.34  maxDD  -38.5%  x20.79
+  B look=126 top15*: PASS | H1 +22.0% H2 +34.7% | all CAGR  +28.3%  Sharpe +1.39  maxDD  -30.6%  x18.64
+  B look=126 top20 : PASS | H1 +19.5% H2 +34.5% | all CAGR  +26.8%  Sharpe +1.39  maxDD  -29.1%  x16.38
+  B look=189 top10 : PASS | H1 +22.5% H2 +37.4% | all CAGR  +29.8%  Sharpe +1.38  maxDD  -42.7%  x21.46
+  B look=189 top15 : PASS | H1 +21.7% H2 +37.1% | all CAGR  +29.2%  Sharpe +1.44  maxDD  -39.4%  x20.25
+  B look=189 top20 : PASS | H1 +19.3% H2 +37.2% | all CAGR  +27.9%  Sharpe +1.45  maxDD  -34.0%  x18.10
 
-Neighbours passing: A 0/9, B 0/9 (18 configs tried -> a lone pass is weak evidence).
+Neighbours passing: A 9/9, B 9/9 (18 configs tried -> a lone pass is weak evidence).
