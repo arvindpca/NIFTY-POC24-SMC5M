@@ -2,6 +2,10 @@ name: Swing Study (daily trend + momentum, paper research, no orders)
 
 on:
   workflow_dispatch:
+    inputs:
+      universe:
+        description: "watchlist or largecap"
+        default: "largecap"
 
 permissions:
   contents: write
@@ -26,6 +30,7 @@ jobs:
       - name: Download adjusted daily history (Yahoo) and run both strategies
         env:
           PYTHONUNBUFFERED: "1"
+          SWING_UNIVERSE: ${{ inputs.universe }}
         run: python -u -m app.swing
       - name: Commit results to the repo
         if: always()

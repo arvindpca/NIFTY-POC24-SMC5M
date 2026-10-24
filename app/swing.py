@@ -16,13 +16,20 @@ import numpy as np
 import pandas as pd
 import requests
 
+UNIVERSE = os.getenv("SWING_UNIVERSE", "watchlist")        # watchlist | largecap
 OUT = os.getenv("SWING_OUT", "swing_results")
-CACHE = os.getenv("SWING_CACHE", ".cache_swing/daily.pkl")
+CACHE = os.getenv("SWING_CACHE", f".cache_swing/daily_{UNIVERSE}.pkl")
+# Large, long-listed blue chips (mostly Nifty-50 names). Newly listed names enter only once they have ~1y of history.
+LARGECAP = ("RELIANCE TCS HDFCBANK ICICIBANK INFY BHARTIARTL ITC SBIN LT KOTAKBANK AXISBANK HINDUNILVR BAJFINANCE MARUTI "
+            "SUNPHARMA TITAN ULTRACEMCO NESTLEIND ASIANPAINT M&M NTPC POWERGRID ONGC TATAMOTORS TATASTEEL JSWSTEEL COALINDIA "
+            "ADANIENT ADANIPORTS WIPRO HCLTECH TECHM GRASIM CIPLA DRREDDY APOLLOHOSP EICHERMOT HEROMOTOCO BAJAJ-AUTO "
+            "BAJAJFINSV BRITANNIA HINDALCO INDUSINDBK SHRIRAMFIN TRENT BEL SBILIFE HDFCLIFE DIVISLAB TATACONSUM BPCL "
+            "GAIL HINDPETRO IOC VEDL PIDILITIND DABUR GODREJCP HAVELLS SIEMENS ABB").split()
 START_TS = int(pd.Timestamp("2014-01-01", tz="UTC").timestamp())
 COST_BPS = 10.0
 WARMUP = 252
 PRIMARY_TREND = dict(brk=55, exit=20, maxpos=10)
-PRIMARY_MOM = dict(look=126, skip=21, topn=15)
+PRIMARY_MOM = dict(look=126, skip=21, topn=10 if UNIVERSE == "largecap" else 15)
 BAR_EXCESS = 0.03
 
 
@@ -198,8 +205,11 @@ def verdict(h1, h2, b1, b2):
 
 def main():
     import csv
-    with open("config/symbol_tokens.csv", newline="", encoding="utf-8-sig") as fh:
-        symbols = [r["symbol"].strip().upper() for r in csv.DictReader(fh) if r["symbol"].strip().upper() != "NIFTY"]
+    if UNIVERSE == "largecap":
+        symbols = list(LARGECAP)
+    else:
+        with open("config/symbol_tokens.csv", newline="", encoding="utf-8-sig") as fh:
+            symbols = [r["symbol"].strip().upper() for r in csv.DictReader(fh) if r["symbol"].strip().upper() != "NIFTY"]
     nifty, P, failed = load_panels(symbols)
     mkt_ok = pd.Series((nifty["c"] > nifty["c"].rolling(200).mean()).to_numpy(), index=nifty.index)
     dates = nifty.index[WARMUP:]
@@ -207,16 +217,17 @@ def main():
     bench = nifty["c"].loc[dates[0]:]
     ew = (1 + P["c"].pct_change().mean(axis=1).fillna(0)).cumprod().loc[dates[0]:]
     b1, b2 = halves(bench, mid)
-    L = [f"SWING STUDY | {dates[0].date()} -> {dates[-1].date()} | split {mid.date()} | symbols loaded={P['c'].shape[1]} failed={len(failed)} | cost {COST_BPS:g} bps/side",
+    L = [f"SWING STUDY [{UNIVERSE}] | {dates[0].date()} -> {dates[-1].date()} | split {mid.date()} | symbols loaded={P['c'].shape[1]} failed={len(failed)} | cost {COST_BPS:g} bps/side",
          "Rules fixed in advance; signal at close, trade at next open; prices split/dividend adjusted. Survivorship bias: current watchlist.",
          f"PASS BAR: both halves CAGR >= Nifty +{BAR_EXCESS*100:.0f}pp AND Sharpe >= Nifty.", "",
          f"NIFTY buy&hold   ALL {fmt(perf(bench))}", f"                  H1 {fmt(b1)}", f"                  H2 {fmt(b2)}",
-         f"EqualWt universe ALL {fmt(perf(ew))}   <- survivorship-biased reference (no costs)", ""]
+         f"EqualWt universe ALL {fmt(perf(ew))}   <- survivorship-biased reference (no costs)",
+         f"                  H1 {fmt(halves(ew, mid)[0])}", f"                  H2 {fmt(halves(ew, mid)[1])}", ""]
     results = {}
     for bps in (10.0, 20.0):
         eqA, trades = sim_trend(P, mkt_ok, **PRIMARY_TREND, bps=bps)
         eqB, turn = sim_mom(P, mkt_ok, **PRIMARY_MOM, bps=bps)
-        for name, eq in (("A TREND (55d breakout, 20d exit, 10 pos, Nifty>200DMA)", eqA), ("B MOMENTUM (6-1m, top15, monthly, Nifty>200DMA)", eqB)):
+        for name, eq in (("A TREND (55d breakout, 20d exit, 10 pos, Nifty>200DMA)", eqA), (f"B MOMENTUM (6-1m, top{PRIMARY_MOM['topn']}, monthly, Nifty>200DMA)", eqB)):
             e = eq.loc[dates[0]:]
             h1, h2 = halves(e, mid)
             tag = "PASS" if verdict(h1, h2, b1, b2) else "fail"
@@ -235,14 +246,14 @@ def main():
         h1, h2 = halves(e, mid); ok = verdict(h1, h2, b1, b2); npa += ok
         L.append(f"  A brk={brk} exit={ex}{'*' if (brk, ex) == (55, 20) else ' '}: {'PASS' if ok else 'fail'} | H1 {h1['cagr']*100:+.1f}% H2 {h2['cagr']*100:+.1f}% | all {fmt(perf(e))}")
     npb = 0
-    for look, topn in itertools.product((90, 126, 189), (10, 15, 20)):
+    for look, topn in itertools.product((90, 126, 189), (5, 10, 15) if UNIVERSE == "largecap" else (10, 15, 20)):
         e = sim_mom(P, mkt_ok, look=look, skip=21, topn=topn)[0].loc[dates[0]:]
         h1, h2 = halves(e, mid); ok = verdict(h1, h2, b1, b2); npb += ok
-        L.append(f"  B look={look} top{topn}{'*' if (look, topn) == (126, 15) else ' '}: {'PASS' if ok else 'fail'} | H1 {h1['cagr']*100:+.1f}% H2 {h2['cagr']*100:+.1f}% | all {fmt(perf(e))}")
+        L.append(f"  B look={look} top{topn}{'*' if (look, topn) == (PRIMARY_MOM['look'], PRIMARY_MOM['topn']) else ' '}: {'PASS' if ok else 'fail'} | H1 {h1['cagr']*100:+.1f}% H2 {h2['cagr']*100:+.1f}% | all {fmt(perf(e))}")
     L += ["", f"Neighbours passing: A {npa}/9, B {npb}/9 (18 configs tried -> a lone pass is weak evidence)."]
     os.makedirs(OUT, exist_ok=True)
     text = "\n".join(L)
-    open(os.path.join(OUT, "summary_swing.txt"), "w", encoding="utf-8").write(text + "\n")
+    open(os.path.join(OUT, "summary_swing.txt" if UNIVERSE == "watchlist" else f"summary_swing_{UNIVERSE}.txt"), "w", encoding="utf-8").write(text + "\n")
     print(text)
 
 
