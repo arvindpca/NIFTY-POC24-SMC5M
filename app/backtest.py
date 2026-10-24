@@ -123,8 +123,16 @@ def fetch_angel_history(tokens, symbols, total_days):
             item = tokens[sym]
             for attempt in range(3):
                 try:
-                    parts = [fetch_15m_candles(api, item["exchange"], item["token"], from_timestamp=a, to_timestamp=b)
-                             for a, b in windows]
+                    parts = []
+                    for a, b in windows:
+                        try:
+                            parts.append(fetch_15m_candles(api, item["exchange"], item["token"], from_timestamp=a, to_timestamp=b))
+                        except RuntimeError as exc:
+                            if "no candle data" in str(exc).lower() or "empty response" in str(exc).lower():
+                                continue  # window older than Angel's stored history: keep what exists
+                            raise
+                    if not parts:
+                        raise RuntimeError(f"{sym}: no candle data in any window")
                     df = pd.concat(parts, ignore_index=True).sort_values("timestamp").drop_duplicates("timestamp", keep="last")
                     out[sym] = (df.reset_index(drop=True), None)
                     break
