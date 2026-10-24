@@ -1,0 +1,16 @@
+VARIANT STUDY (Angel 15m) | window 2025-09-05 -> 2026-10-23 (280 days) | split at 20260401 | cost 5.0 bps/side | symbols=173 failed=0 | raw signals=600 | variants=96
+All metrics NET of cost. avgR = mean net R per trade (sizing-neutral). H1 = first half, H2 = second half.
+BASELINE (current live rules) RR=1.5 minSL=0.0% exit=15:00 BE=off skip<10:00=off
+  ALL: n=400 net=Rs-16,504 avgR=-0.154 win=42% pf=0.82 dd=Rs-22,314
+  H1 : n=201 net=Rs-16,772 avgR=-0.151 win=40% pf=0.66 dd=Rs-20,892
+  H2 : n=199 net=Rs268 avgR=-0.156 win=44% pf=1.01 dd=Rs-7,188
+Variants with >= 30 trades in each half: 96/96; positive net avgR in BOTH halves: 0  (some of these are luck: 96 variants were tried)
+HONEST OUT-OF-SAMPLE: best variant chosen on H1 only = RR=1.0 minSL=0.8% exit=15:15 BE=off skip<10:00=on
+  H1 (selection): avgR=-0.021 n=125 | H2 (unseen): avgR=-0.050 n=128 net=Rs-4,848 pf=0.84
+  Baseline H2 (unseen): avgR=-0.156 n=199 net=Rs268
+  knob RR: 1.0: H1 -0.105 H2 -0.057 | 1.25: H1 -0.110 H2 -0.051 | 1.5: H1 -0.117 H2 -0.084 | 2.0: H1 -0.122 H2 -0.098
+  knob minSL%: 0.0: H1 -0.110 H2 -0.124 | 0.5: H1 -0.133 H2 -0.060 | 0.8: H1 -0.098 H2 -0.034
+  knob exit: 900: H1 -0.147 H2 -0.060 | 915: H1 -0.080 H2 -0.086
+  knob breakeven: False: H1 -0.114 H2 -0.070 | True: H1 -0.113 H2 -0.075
+  knob skip<10:00: False: H1 -0.141 H2 -0.081 | True: H1 -0.086 H2 -0.064
+Universe = current watchlist (survivorship bias). Entry at next bar open, no slippage. Paper research, not a forecast.
