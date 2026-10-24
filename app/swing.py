@@ -80,7 +80,7 @@ def _val_prices(P):
     C = P["c"]
     Cff = C.ffill()
     Off = P["o"].where(P["o"].notna(), Cff)
-    return Cff, Off
+    return Cff.fillna(0.0), Off.fillna(0.0)        # not-yet-listed stocks: price 0 and zero shares, never NaN in sums
 
 
 def sim_trend(P, mkt_ok, brk, exit, maxpos, bps=COST_BPS, start_cash=1_000_000.0):
@@ -163,6 +163,8 @@ def sim_mom(P, mkt_ok, look, skip, topn, bps=COST_BPS, start_cash=1_000_000.0):
                 sold = -delta[j]
                 cash += sold * (1 - c); sh[j] -= sold / Offn[t, j]; turnover += sold
             for j in buys:
+                if Offn[t, j] <= 0:
+                    continue
                 spend = min(delta[j], cash / (1 + c))
                 if spend > 0:
                     sh[j] += spend / Offn[t, j]; cash -= spend * (1 + c); turnover += spend
