@@ -46,7 +46,7 @@ jobs:
           ANGEL_PIN: ${{ secrets.ANGEL_PIN }}
           ANGEL_TOTP_SECRET: ${{ secrets.ANGEL_TOTP_SECRET }}
           PYTHONUNBUFFERED: "1"
-        run: python -u -m app.ablation
+        run: python -u -m app.ablation && python -u -m app.v2check
       - name: Commit results to the repo
         if: always()
         run: |
