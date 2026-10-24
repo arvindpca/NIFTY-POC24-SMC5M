@@ -65,3 +65,7 @@ Run the **Validate Strategy B** workflow to compile Python and execute unit test
 
 The workflow has several off-peak cron attempts, but GitHub may still delay them. For a guaranteed 09:10 IST start, create a free job at cron-job.org (Mon-Fri 09:10 IST) that POSTs to
 `https://api.github.com/repos/arvindpca/NIFTY-POC24-SMC5M/dispatches` with header `Authorization: Bearer <fine-grained token, Contents: write>` and body `{"event_type":"start-paper-loop"}`.
+
+## Angel-only mode (opt-in, accuracy over coverage)
+
+Set `PAPER_UNIVERSE_SOURCE=angel` and `PAPER_ALLOW_YAHOO_FALLBACK=false` to scan NIFTY + the whole universe from Angel SmartAPI only (separate cache `data/candle_cache_angel_15m_v1`). A symbol that Angel refuses after retries is skipped for that cycle (never replaced by Yahoo data); the cycle stops early after `PAPER_MAX_CONSEC_RATE_LIMITS` (4) consecutive refusals or `PAPER_CYCLE_BUDGET_SEC` (780). Recommended pacing: `SMARTAPI_MIN_CALL_GAP_SEC=0.45`, `SMARTAPI_MAX_RETRIES=4`, `SMARTAPI_BACKOFF_BASE_SEC=8`. Not enabled in the workflow yet; test during market hours before switching.

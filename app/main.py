@@ -107,14 +107,24 @@ def completed_15m(raw):
     return d[d["timestamp"] <= now.floor("15min")].sort_values("timestamp").reset_index(drop=True)
 
 
+def angel_strict():
+    """Angel-only mode: whole universe from SmartAPI, never Yahoo (accuracy over coverage)."""
+    return (os.getenv("PAPER_UNIVERSE_SOURCE", "yahoo").strip().lower() == "angel"
+            and os.getenv("PAPER_ALLOW_YAHOO_FALLBACK", "true").strip().lower() == "false")
+
+
 def safe_client():
-    """One SmartAPI login; if Angel is unreachable, return None so the scan runs on Yahoo instead of dying."""
-    try:
-        return create_data_client()
-    except Exception as exc:
-        log_event("WARNING", "SMARTAPI_LOGIN_FAILED_YAHOO_FALLBACK", str(exc)[:300])
-        print(f"SmartAPI login failed; using Yahoo fallback this cycle: {exc}")
-        return None
+    """One SmartAPI login. Strict mode retries the login; otherwise failure -> None (Yahoo fallback)."""
+    attempts = 3 if angel_strict() else 1
+    for attempt in range(attempts):
+        try:
+            return create_data_client()
+        except Exception as exc:
+            log_event("WARNING", "SMARTAPI_LOGIN_FAILED", f"attempt {attempt+1}/{attempts}: {str(exc)[:250]}")
+            print(f"SmartAPI login failed (attempt {attempt+1}/{attempts}): {exc}")
+            if attempt + 1 < attempts:
+                time.sleep(20)
+    return None
 
 
 def bulk_yahoo_fetch(symbols, workers=None):
@@ -138,7 +148,7 @@ def bulk_yahoo_fetch(symbols, workers=None):
 
 def load_or_update_candle_cache(api, symbol, item, prefetched=None):
     """Keep direct 15m candles locally and request only data newer than the cache."""
-    cache_dir = DATA_DIR / "candle_cache_15m_end_labeled_v2"
+    cache_dir = DATA_DIR / ("candle_cache_angel_15m_v1" if angel_strict() else "candle_cache_15m_end_labeled_v2")
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_path = cache_dir / f"{symbol}.csv"
     cached = None
@@ -154,6 +164,8 @@ def load_or_update_candle_cache(api, symbol, item, prefetched=None):
     if prefetched is not None:
         fetched = prefetched
         mode = "YAHOO_BULK"
+    elif api is None and angel_strict():
+        raise RuntimeError(f"{symbol}: Angel session unavailable and Yahoo fallback is disabled")
     elif api is None:
         # SmartAPI is in cooldown or has rate-limited this cycle. Use the
         # second repository's Yahoo historical warm-up approach, without
@@ -334,6 +346,8 @@ def main(session=None):
     # When SmartAPI is cooling down, keep the scanner useful via Yahoo 15m
     # history rather than falsely reporting a successful no-op or hammering the API.
     api = None
+    if angel_strict():
+        state.pop("smartapi_rate_limit_until", None)  # cooldown exists only to switch to Yahoo
     cooldown_until = state.get("smartapi_rate_limit_until")
     if cooldown_until:
         try:
@@ -380,7 +394,8 @@ def main(session=None):
     batch_size = max(1, min(int(os.getenv("PAPER_SCAN_BATCH_SIZE", "35")), 50))
     cursor = int(state.get("scan_cursor", 0) or 0) % max(1, len(universe))
     if universe_source == "angel" and universe:
-        rotating = [universe[(cursor + i) % len(universe)] for i in range(min(batch_size, len(universe)))]
+        n_scan = len(universe) if angel_strict() else min(batch_size, len(universe))
+        rotating = [universe[(cursor + i) % len(universe)] for i in range(n_scan)]
         state["scan_cursor"] = (cursor + len(rotating)) % len(universe)
     else:
         rotating = []
@@ -406,10 +421,17 @@ def main(session=None):
     scan_started = time.monotonic()
     fetched_count = 0
     cache_modes = {"INITIAL_HISTORY": 0, "INCREMENTAL": 0, "YAHOO_FALLBACK": 0}
+    consecutive_rl = 0
+    cycle_budget = float(os.getenv("PAPER_CYCLE_BUDGET_SEC", "780"))
     for symbol, item in pending_symbols:
+        if angel_strict() and time.monotonic() - scan_started > cycle_budget:
+            log_event("ERROR", "SMARTAPI_CYCLE_BUDGET_EXCEEDED", f"stopped fetching at {symbol}; remaining symbols not scanned this cycle")
+            print(f"CYCLE BUDGET EXCEEDED at {symbol}; remaining symbols skipped this cycle")
+            break
         symbol_started = time.monotonic()
         try:
             raw, cache_mode, fetched_rows = load_or_update_candle_cache(api, symbol, item)
+            consecutive_rl = 0
             raw_by_symbol[symbol] = raw
             frames[symbol] = completed_15m(raw)
             fetched_count += 1
@@ -422,6 +444,18 @@ def main(session=None):
                 f"seconds={time.monotonic()-symbol_started:.1f}"
             )
         except SmartAPIRateLimitError as exc:
+            if angel_strict():
+                # Retries with backoff already happened inside the client. No Yahoo, no cooldown:
+                # this symbol is simply not scanned this cycle. Stop early if Angel keeps refusing.
+                diagnostic_counts["fetch_failed"] += 1
+                consecutive_rl += 1
+                rate_limit_hit = True
+                record_scan_diagnostic(cycle_id, symbol, "FETCH", "SMARTAPI_RATE_LIMIT_STRICT", exc)
+                log_event("WARNING", "SMARTAPI_RATE_LIMIT_STRICT", f"{symbol}: {exc}")
+                if symbol == "NIFTY" or consecutive_rl >= int(os.getenv("PAPER_MAX_CONSEC_RATE_LIMITS", "4")):
+                    log_event("ERROR", "SMARTAPI_FETCH_ABORTED", f"{consecutive_rl} consecutive rate-limit refusals (last: {symbol}); rest of cycle skipped")
+                    break
+                continue
             record_scan_diagnostic(cycle_id, symbol, "FETCH", "SMARTAPI_RATE_LIMIT_YAHOO_FALLBACK", exc)
             log_event("WARNING", "SMARTAPI_RATE_LIMIT_CIRCUIT_BREAKER", f"{symbol}: {exc}")
             print(f"SMARTAPI RATE LIMIT | symbol={symbol} | switching this cycle to Yahoo 15m fallback: {exc}")
@@ -512,13 +546,17 @@ def main(session=None):
         if not retry:
             break
         time.sleep(float(os.getenv("PAPER_DQ_RETRY_WAIT_SEC", "20")))
-        refreshed = bulk_yahoo_fetch(retry)
+        strict_retry = angel_strict()
+        refreshed = {} if strict_retry else bulk_yahoo_fetch(retry)
         for s_ in retry:
             df_, err_ = refreshed.get(s_, (None, "missing"))
-            if err_ is not None or df_ is None:
+            if not strict_retry and (err_ is not None or df_ is None):
                 continue
             try:
-                raw_, _, _ = load_or_update_candle_cache(None, s_, tokens[s_], prefetched=df_)
+                if strict_retry:
+                    raw_, _, _ = load_or_update_candle_cache(api, s_, tokens[s_])
+                else:
+                    raw_, _, _ = load_or_update_candle_cache(None, s_, tokens[s_], prefetched=df_)
                 raw_by_symbol[s_] = raw_
                 frames[s_] = completed_15m(raw_)
                 if s_ == "NIFTY":
@@ -612,7 +650,12 @@ def main(session=None):
         f"elapsed_sec={time.monotonic()-scan_started:.1f} | "
         f"open={len(state['open_positions'])} | pending={len(state.get('pending_entries', {}))}"
     )
-    if rate_limit_hit and fetched_count < len(pending_symbols):
+    if angel_strict() and fetched_count < len(pending_symbols):
+        msg = (f"ANGEL SCAN INCOMPLETE: {fetched_count}/{len(pending_symbols)} instruments fetched; "
+               "unfetched symbols were NOT scanned this cycle (Yahoo fallback disabled).")
+        log_event("WARNING", "ANGEL_SCAN_INCOMPLETE", msg)
+        print(msg)
+    elif rate_limit_hit and fetched_count < len(pending_symbols):
         message = (
             "PAPER SCAN INCOMPLETE: SmartAPI rate limit occurred and Yahoo fallback "
             f"could not fetch every selected instrument ({fetched_count}/{len(pending_symbols)} fetched). "
@@ -621,7 +664,7 @@ def main(session=None):
         log_event("ERROR", "PAPER_SCAN_INCOMPLETE_RATE_LIMIT", message)
         print(message)
         raise RuntimeError(message)
-    if rate_limit_hit:
+    if rate_limit_hit and not angel_strict():
         print("PAPER SCAN COMPLETE WITH DATA FALLBACK | SmartAPI cooldown saved; selected instruments fetched via Yahoo fallback.")
 
 
