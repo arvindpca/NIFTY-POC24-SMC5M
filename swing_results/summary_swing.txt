@@ -1,0 +1,62 @@
+SWING STUDY | 2015-01-20 -> 2026-10-23 | split 2020-12-14 | symbols loaded=165 failed=8 | cost 10 bps/side
+Rules fixed in advance; signal at close, trade at next open; prices split/dividend adjusted. Survivorship bias: current watchlist.
+PASS BAR: both halves CAGR >= Nifty +3pp AND Sharpe >= Nifty.
+
+NIFTY buy&hold   ALL CAGR   +8.5%  Sharpe +0.60  maxDD  -38.4%  x2.60
+                  H1 CAGR   +7.8%  Sharpe +0.52  maxDD  -38.4%  x1.55
+                  H2 CAGR   +9.1%  Sharpe +0.70  maxDD  -17.2%  x1.67
+EqualWt universe ALL CAGR  +24.0%  Sharpe +1.29  maxDD  -44.8%  x12.58   <- survivorship-biased reference (no costs)
+
+[fail] @10bps A TREND (55d breakout, 20d exit, 10 pos, Nifty>200DMA) | trades=420 win=43%
+      ALL CAGR   +4.9%  Sharpe +0.40  maxDD  -12.7%  x1.07
+      H1  CAGR   +nan%  Sharpe +nan  maxDD    nan%  xnan
+      H2  CAGR   +4.9%  Sharpe +0.40  maxDD  -12.7%  x1.07
+[fail] @10bps B MOMENTUM (6-1m, top15, monthly, Nifty>200DMA)
+      ALL CAGR  +11.4%  Sharpe +0.90  maxDD   -7.5%  x1.15
+      H1  CAGR   +nan%  Sharpe +nan  maxDD    nan%  xnan
+      H2  CAGR  +11.4%  Sharpe +0.90  maxDD   -7.5%  x1.15
+[fail] @20bps A TREND (55d breakout, 20d exit, 10 pos, Nifty>200DMA) | trades=420 win=43%
+      ALL CAGR   +4.4%  Sharpe +0.36  maxDD  -12.8%  x1.06
+      H1  CAGR   +nan%  Sharpe +nan  maxDD    nan%  xnan
+      H2  CAGR   +4.4%  Sharpe +0.36  maxDD  -12.8%  x1.06
+[fail] @20bps B MOMENTUM (6-1m, top15, monthly, Nifty>200DMA)
+      ALL CAGR  +10.7%  Sharpe +0.86  maxDD   -7.5%  x1.14
+      H1  CAGR   +nan%  Sharpe +nan  maxDD    nan%  xnan
+      H2  CAGR  +10.7%  Sharpe +0.86  maxDD   -7.5%  x1.14
+
+YEARLY RETURNS @10bps (%):
+year   NIFTY   A-trend   B-mom
+2015     -8.6       nan      nan
+2016      5.1       nan      nan
+2017     28.7       nan      nan
+2018      4.0       nan      nan
+2019     12.7       nan      nan
+2020     14.8       nan      nan
+2021     23.8       nan      nan
+2022      2.7       nan      nan
+2023     19.4       nan      nan
+2024      8.8       nan      nan
+2025     10.1       nan      nan
+2026    -13.6      -9.3     -6.7
+
+NEIGHBOURS @10bps (primary marked *): does it survive small parameter changes?
+  A brk=40 exit=10 : fail | H1 +nan% H2 +9.6% | all CAGR   +9.6%  Sharpe +0.70  maxDD  -17.5%  x1.13
+  A brk=40 exit=20 : fail | H1 +nan% H2 +5.5% | all CAGR   +5.5%  Sharpe +0.44  maxDD  -12.5%  x1.07
+  A brk=40 exit=30 : fail | H1 +nan% H2 +57.8% | all CAGR  +57.8%  Sharpe +2.37  maxDD  -14.3%  x1.82
+  A brk=55 exit=10 : fail | H1 +nan% H2 +10.0% | all CAGR  +10.0%  Sharpe +0.72  maxDD  -17.2%  x1.13
+  A brk=55 exit=20*: fail | H1 +nan% H2 +4.9% | all CAGR   +4.9%  Sharpe +0.40  maxDD  -12.7%  x1.07
+  A brk=55 exit=30 : fail | H1 +nan% H2 +57.8% | all CAGR  +57.8%  Sharpe +2.37  maxDD  -14.3%  x1.82
+  A brk=80 exit=10 : fail | H1 +nan% H2 +9.3% | all CAGR   +9.3%  Sharpe +0.67  maxDD  -15.8%  x1.12
+  A brk=80 exit=20 : fail | H1 +nan% H2 +8.7% | all CAGR   +8.7%  Sharpe +0.62  maxDD  -10.8%  x1.12
+  A brk=80 exit=30 : fail | H1 +nan% H2 +56.0% | all CAGR  +56.0%  Sharpe +2.28  maxDD  -15.5%  x1.79
+  B look=90 top10 : fail | H1 +nan% H2 +18.7% | all CAGR  +18.7%  Sharpe +1.23  maxDD   -8.8%  x1.25
+  B look=90 top15 : fail | H1 +nan% H2 +12.2% | all CAGR  +12.2%  Sharpe +0.94  maxDD   -7.2%  x1.16
+  B look=90 top20 : fail | H1 +nan% H2 +9.3% | all CAGR   +9.3%  Sharpe +0.78  maxDD   -7.5%  x1.12
+  B look=126 top10 : fail | H1 +nan% H2 +11.8% | all CAGR  +11.8%  Sharpe +0.84  maxDD   -8.2%  x1.16
+  B look=126 top15*: fail | H1 +nan% H2 +11.4% | all CAGR  +11.4%  Sharpe +0.90  maxDD   -7.5%  x1.15
+  B look=126 top20 : fail | H1 +nan% H2 +6.9% | all CAGR   +6.9%  Sharpe +0.60  maxDD   -6.6%  x1.09
+  B look=189 top10 : fail | H1 +nan% H2 +0.2% | all CAGR   +0.2%  Sharpe +0.08  maxDD  -10.3%  x1.00
+  B look=189 top15 : fail | H1 +nan% H2 +0.5% | all CAGR   +0.5%  Sharpe +0.10  maxDD   -8.8%  x1.01
+  B look=189 top20 : fail | H1 +nan% H2 +1.0% | all CAGR   +1.0%  Sharpe +0.14  maxDD   -9.7%  x1.01
+
+Neighbours passing: A 0/9, B 0/9 (18 configs tried -> a lone pass is weak evidence).
