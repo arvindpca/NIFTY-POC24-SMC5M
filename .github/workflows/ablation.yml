@@ -1,0 +1,60 @@
+name: Filter Ablation + Signal Quality (paper research, no orders)
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Trading days of Angel history to study (about 13 months = 280)"
+        default: "280"
+
+permissions:
+  contents: write
+
+# Uses the Angel login: run only outside market hours so it cannot disturb the live loop's session.
+concurrency:
+  group: backtest-research
+  cancel-in-progress: false
+
+jobs:
+  study:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 170
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: .cache_angel
+          key: angel-15m-${{ github.run_id }}
+          restore-keys: angel-15m-
+      - name: Download Angel history (cached), enumerate setups, ablate filters
+        env:
+          PAPER_ONLY: "true"
+          STUDY_DAYS: ${{ inputs.days }}
+          SMARTAPI_MIN_CALL_GAP_SEC: "0.45"
+          SMARTAPI_MAX_CALL_GAP_SEC: "3.0"
+          SMARTAPI_MAX_RETRIES: "3"
+          SMARTAPI_BACKOFF_BASE_SEC: "10"
+          ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
+          ANGEL_CLIENT_CODE: ${{ secrets.ANGEL_CLIENT_CODE }}
+          ANGEL_PIN: ${{ secrets.ANGEL_PIN }}
+          ANGEL_TOTP_SECRET: ${{ secrets.ANGEL_TOTP_SECRET }}
+          PYTHONUNBUFFERED: "1"
+        run: python -u -m app.ablation
+      - name: Commit results to the repo
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ablation_results 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -q -m "chore: ablation results"
+            git pull -q --rebase -X theirs origin main || true
+            git push -q origin HEAD:main || true
+          fi
