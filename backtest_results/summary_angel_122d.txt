@@ -1,0 +1,14 @@
+BACKTEST 2026-04-29 -> 2026-10-23 | symbols ok=172 failed=1 | raw signals=239
+ALL (portfolio-limited): trades=160 win_rate=44.4% net_pnl=Rs8,286 profit_factor=1.27 avg_R=-0.01 max_drawdown=Rs-4,713 (notional Rs50,000/trade, cost 0.0 bps/side)
+ALL, 5 bps/side costs: trades=160 win_rate=43.1% net_pnl=Rs367 profit_factor=1.01 avg_R=-0.01 max_drawdown=Rs-5,627 (notional Rs50,000/trade, cost 5.0 bps/side)
+ALL, 10 bps/side costs: trades=160 win_rate=41.2% net_pnl=Rs-7,551 profit_factor=0.81 avg_R=-0.01 max_drawdown=Rs-10,044 (notional Rs50,000/trade, cost 10.0 bps/side)
+LONG: trades=76 win_rate=42.1% net_pnl=Rs6,537 profit_factor=1.45 avg_R=0.02 max_drawdown=Rs-2,909 (notional Rs50,000/trade, cost 0.0 bps/side)
+SHORT: trades=84 win_rate=46.4% net_pnl=Rs1,748 profit_factor=1.11 avg_R=-0.04 max_drawdown=Rs-5,965 (notional Rs50,000/trade, cost 0.0 bps/side)
+By month: 2026-05: n=32 win=34% net=Rs-1,057 avgR=-0.13 | 2026-06: n=27 win=48% net=Rs676 avgR=-0.05 | 2026-07: n=32 win=56% net=Rs7,650 avgR=0.20 | 2026-08: n=25 win=32% net=Rs519 avgR=-0.13 | 2026-09: n=27 win=56% net=Rs541 avgR=0.06 | 2026-10: n=17 win=35% net=Rs-43 avgR=-0.10
+Trading days with a trade: 65/122 | best day Rs3,760 | worst day Rs-1,981 | longest losing streak 8 trades
+Expectancy per trade: Rs52 (-0.015 R) | max concurrent exposure Rs250,000
+Exit reasons: TIME_EXIT=95, SL=45, TP=20
+NIFTY 1H trend share of bars: POSITIVE=19% NEGATIVE=26% NEUTRAL=55%
+Days with a non-neutral NIFTY trend: 98/122
+Data failures: VAML
+Source: ANGEL 15m OHLCV. Universe = current watchlist (survivorship bias). Paper simulation, not a forecast.
