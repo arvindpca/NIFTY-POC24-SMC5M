@@ -9,12 +9,14 @@ evaluating each bar on its prefix equals what the live scanner would have seen.
 import math
 import os
 import sys
+import time
 from pathlib import Path
 
 import pandas as pd
 
 import strategy_b_original as original
 from app.main import load_tokens, bulk_yahoo_fetch
+from app.smartapi_client import create_data_client, fetch_15m_candles, SmartAPIRateLimitError
 from app.rules import exit_decision, target_for
 from app.strategy_adapter import _latest_setup_signal, nifty_trend_frame
 
@@ -24,6 +26,9 @@ MAX_OPEN = 5
 MAX_PER_DAY = 5
 RR = 1.5
 TEST_DAYS = int(os.getenv("BACKTEST_DAYS", "10"))
+SOURCE = os.getenv("BACKTEST_SOURCE", "yahoo").strip().lower()   # yahoo (<=~60d) | angel (months)
+CHUNK_DAYS = 60                                                  # Angel request size (limit is 200d for 15m)
+WINDOW = 100                                                     # bars of context passed to the signal function
 OUT_DIR = Path(os.getenv("BACKTEST_OUT", "backtest_results"))
 
 
@@ -38,11 +43,11 @@ def symbol_trades(symbol, frame, test_dates):
     """All signals (one per bar at most) with their stand-alone exit, before portfolio limits."""
     out = []
     n = len(frame)
-    for k in range(max(original.MIN_WARMUP_BARS, 15), n - 1):
+    for k in range(max(original.MIN_WARMUP_BARS, WINDOW), n - 1):
         row_ts = frame.at[k, "timestamp"]
         if row_ts.date() not in test_dates:
             continue
-        sig = _latest_setup_signal(frame.iloc[: k + 1], frame.at[k, "nifty_trend"])
+        sig = _latest_setup_signal(frame.iloc[k - WINDOW + 1: k + 1], frame.at[k, "nifty_trend"])
         if not sig:
             continue
         entry_bar = frame.iloc[k + 1]
@@ -105,11 +110,59 @@ def summarize(trades, label, cost_bps=0.0):
             f"max_drawdown=Rs{dd:,.0f} (notional Rs{NOTIONAL:,.0f}/trade, cost {cost_bps} bps/side)")
 
 
+def fetch_angel_history(tokens, symbols, total_days):
+    """Full-history download from Angel SmartAPI in 60-day chunks, one symbol at a time (paced by the client)."""
+    now = pd.Timestamp.now(tz=IST)
+    edges = [now - pd.Timedelta(days=d) for d in range(0, total_days + CHUNK_DAYS, CHUNK_DAYS)]
+    windows = [(edges[i + 1], edges[i]) for i in range(len(edges) - 1) if edges[i + 1] < now]
+    windows[-1] = (now - pd.Timedelta(days=total_days), windows[-1][1])
+    api = create_data_client()
+    out = {}
+    try:
+        for idx, sym in enumerate(symbols, 1):
+            item = tokens[sym]
+            for attempt in range(3):
+                try:
+                    parts = [fetch_15m_candles(api, item["exchange"], item["token"], from_timestamp=a, to_timestamp=b)
+                             for a, b in windows]
+                    df = pd.concat(parts, ignore_index=True).sort_values("timestamp").drop_duplicates("timestamp", keep="last")
+                    out[sym] = (df.reset_index(drop=True), None)
+                    break
+                except SmartAPIRateLimitError as exc:
+                    print(f"RATE LIMIT {sym} attempt {attempt+1}: waiting 60s")
+                    time.sleep(60)
+                    out[sym] = (None, exc)
+                except Exception as exc:
+                    out[sym] = (None, exc)
+                    break
+            if idx % 20 == 0:
+                print(f"ANGEL_DOWNLOAD {idx}/{len(symbols)} done")
+    finally:
+        try:
+            api.terminateSession(os.getenv("ANGEL_CLIENT_CODE", ""))
+        except Exception:
+            pass
+    return out
+
+
+def streaks(pnl):
+    longest = cur = 0
+    for v in pnl:
+        cur = cur + 1 if v < 0 else 0
+        longest = max(longest, cur)
+    return longest
+
+
 def main():
     tokens = load_tokens()
     symbols = [s for s in tokens if s != "NIFTY"]
-    print(f"Downloading 15m history: {len(symbols)+1} symbols (Yahoo, parallel)")
-    data = bulk_yahoo_fetch(["NIFTY", *symbols])
+    if SOURCE == "angel":
+        total_days = int(TEST_DAYS * 1.5) + 14  # trading days -> calendar days + indicator warm-up
+        print(f"Downloading 15m history: {len(symbols)+1} symbols from ANGEL SmartAPI, {total_days} calendar days")
+        data = fetch_angel_history(tokens, ["NIFTY", *symbols], total_days)
+    else:
+        print(f"Downloading 15m history: {len(symbols)+1} symbols (Yahoo, parallel)")
+        data = bulk_yahoo_fetch(["NIFTY", *symbols])
     nifty_df, err = data["NIFTY"]
     if nifty_df is None:
         raise SystemExit(f"NIFTY data unavailable: {err}")
@@ -132,28 +185,43 @@ def main():
             failed.append(f"{sym}({exc})")
     accepted = apply_portfolio(candidates)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(accepted).to_csv(OUT_DIR / "trades_10d.csv", index=False)
+    tag = f"{SOURCE}_{TEST_DAYS}d"
+    pd.DataFrame(accepted).to_csv(OUT_DIR / f"trades_{tag}.csv", index=False)
     lines = [f"BACKTEST {days[0]} -> {days[-1]} | symbols ok={ok} failed={len(failed)} | raw signals={len(candidates)}",
-             summarize(accepted, "ALL (portfolio-limited)"), summarize(accepted, "ALL, 5 bps/side costs", 5.0)]
+             summarize(accepted, "ALL (portfolio-limited)"), summarize(accepted, "ALL, 5 bps/side costs", 5.0), summarize(accepted, "ALL, 10 bps/side costs", 10.0)]
     for side in ("LONG", "SHORT"):
         lines.append(summarize([t for t in accepted if t["side"] == side], side))
     if accepted:
         d = pd.DataFrame(accepted)
         d["day"] = d["entry_time"].dt.date
-        lines.append("Per day net P&L (Rs): " + ", ".join(f"{k}:{v:,.0f}" for k, v in d.groupby("day")["gross_pnl"].sum().items()))
+        d = d.sort_values("entry_time")
+        if len(days) <= 25:
+            lines.append("Per day net P&L (Rs): " + ", ".join(f"{k}:{v:,.0f}" for k, v in d.groupby("day")["gross_pnl"].sum().items()))
+        d["month"] = d["entry_time"].dt.strftime("%Y-%m")
+        m = d.groupby("month").agg(trades=("gross_pnl", "size"), net=("gross_pnl", "sum"), win=("gross_pnl", lambda x: 100 * (x > 0).mean()), avgR=("r_multiple", "mean"))
+        lines.append("By month: " + " | ".join(f"{k}: n={int(r.trades)} win={r.win:.0f}% net=Rs{r.net:,.0f} avgR={r.avgR:.2f}" for k, r in m.iterrows()))
+        dd_ = d.groupby("day")["gross_pnl"].sum()
+        lines.append(f"Trading days with a trade: {len(dd_)}/{len(days)} | best day Rs{dd_.max():,.0f} | worst day Rs{dd_.min():,.0f} | longest losing streak {streaks(d['gross_pnl'])} trades")
+        lines.append(f"Expectancy per trade: Rs{d['gross_pnl'].mean():,.0f} ({d['r_multiple'].mean():.3f} R) | max concurrent exposure Rs{MAX_OPEN*NOTIONAL:,.0f}")
         lines.append("Exit reasons: " + ", ".join(f"{k}={v}" for k, v in d["reason"].value_counts().items()))
     nt = nifty_trend[nifty_trend["timestamp"].dt.date.isin(test_dates)].copy()
     nt["day"] = nt["timestamp"].dt.date
-    for day, g in nt.groupby("day"):
-        c = g["nifty_trend"].value_counts().to_dict()
-        lines.append(f"NIFTY 1H trend {day}: POSITIVE={c.get('POSITIVE',0)} NEGATIVE={c.get('NEGATIVE',0)} NEUTRAL={c.get('NEUTRAL',0)} (15m bars)")
-    if candidates:
-        lines.append("Raw signals by day: " + ", ".join(f"{k}:{v}" for k, v in pd.Series([t["signal_time"].date() for t in candidates]).value_counts().sort_index().items()))
+    if len(days) <= 25:
+        for day, g in nt.groupby("day"):
+            c = g["nifty_trend"].value_counts().to_dict()
+            lines.append(f"NIFTY 1H trend {day}: POSITIVE={c.get('POSITIVE',0)} NEGATIVE={c.get('NEGATIVE',0)} NEUTRAL={c.get('NEUTRAL',0)} (15m bars)")
+        if candidates:
+            lines.append("Raw signals by day: " + ", ".join(f"{k}:{v}" for k, v in pd.Series([t["signal_time"].date() for t in candidates]).value_counts().sort_index().items()))
+    else:
+        c = nt["nifty_trend"].value_counts(normalize=True) * 100
+        lines.append(f"NIFTY 1H trend share of bars: POSITIVE={c.get('POSITIVE',0):.0f}% NEGATIVE={c.get('NEGATIVE',0):.0f}% NEUTRAL={c.get('NEUTRAL',0):.0f}%")
+        tdays = nt.groupby("day")["nifty_trend"].agg(lambda x: "tradeable" if (x != "NEUTRAL").any() else "neutral")
+        lines.append(f"Days with a non-neutral NIFTY trend: {(tdays=='tradeable').sum()}/{len(tdays)}")
     if failed:
         lines.append("Data failures: " + ", ".join(failed[:20]))
-    lines.append("Note: Yahoo 15m OHLCV (volume/prices differ slightly from Angel). Paper simulation, not a forecast.")
+    lines.append(f"Source: {SOURCE.upper()} 15m OHLCV. Universe = current watchlist (survivorship bias). Paper simulation, not a forecast.")
     text = "\n".join(lines)
-    (OUT_DIR / "summary_10d.txt").write_text(text + "\n", encoding="utf-8")
+    (OUT_DIR / f"summary_{tag}.txt").write_text(text + "\n", encoding="utf-8")
     print(text)
 
 

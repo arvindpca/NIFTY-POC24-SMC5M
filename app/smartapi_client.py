@@ -268,9 +268,11 @@ def fetch_5m_candles(api, exchange, token, lookback_days=5):
     return df.reset_index(drop=True)
 
 
-def fetch_15m_candles(api, exchange, token, lookback_days=10, from_timestamp=None):
-    """Fetch direct 15-minute candles. from_timestamp enables incremental cache updates."""
+def fetch_15m_candles(api, exchange, token, lookback_days=10, from_timestamp=None, to_timestamp=None):
+    """Fetch direct 15-minute candles. from_timestamp enables incremental cache updates;
+    to_timestamp bounds the request (used to chunk long histories for backtests)."""
     now = datetime.now(IST)
+    end = now if to_timestamp is None else pd.Timestamp(to_timestamp).tz_convert(IST) if pd.Timestamp(to_timestamp).tzinfo else pd.Timestamp(to_timestamp).tz_localize(IST)
     if from_timestamp is None:
         start = now - timedelta(days=lookback_days)
     else:
@@ -286,7 +288,7 @@ def fetch_15m_candles(api, exchange, token, lookback_days=10, from_timestamp=Non
         "symboltoken": str(token),
         "interval": "FIFTEEN_MINUTE",
         "fromdate": start.strftime("%Y-%m-%d %H:%M"),
-        "todate": now.strftime("%Y-%m-%d %H:%M"),
+        "todate": end.strftime("%Y-%m-%d %H:%M"),
     }
     response = _get_candle_data_with_retry(api, params, token)
     df = pd.DataFrame(response["data"], columns=["timestamp", "open", "high", "low", "close", "volume"])
