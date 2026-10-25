@@ -1,4 +1,4 @@
-NIFTY weekly option strategy study [realistic]  (generated 2026-10-25 20:03 UTC)
+NIFTY weekly option strategy study [realistic]  (generated 2026-10-25 20:30 UTC)
 Data: Angel SmartAPI 5m; 2023-10-23 -> 2026-10-23; 740 trading days
 Option prices: Black-Scholes, IV = previous-day India VIX; intraday_share=0.59, iv_shock=6.0. Cost 2.0 pts per leg round-trip.
 Rs figures = points x lot size 65. Research only, not advice.

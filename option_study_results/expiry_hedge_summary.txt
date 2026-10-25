@@ -1,0 +1,54 @@
+EXPIRY-DAY ONLY: naked vs hedged NIFTY option selling  (2026-10-25 20:31 UTC)
+Data: Angel SmartAPI 5m. Entry 09:20, exit 15:15. Lot 65. Cost 2.0 pts per leg round-trip.
+Margin is an ESTIMATE (SPAN-like + SEBI 2% expiry-day ELM per short leg). Research only.
+
+=== [naive] intraday_share=1.00 iv_shock=0.0  (148 expiry days, 3.0 yrs) ===
+                           trades  win%  total_pts    PF  total_Rs_lot  avg_margin_Rs  yearly_return%  maxDD_Rs  maxDD%_of_margin  worst_day_Rs
+1_naked_straddle_SL40       148.0  85.1     5729.0  4.97      372410.0       293876.0            42.7   -8510.0              -2.9       -8170.0
+2_ironfly_1pct_SL40         148.0  73.6     2847.0  2.28      185062.0        91550.0            68.2  -17460.0             -19.1      -16705.0
+3_ironfly_1.5pct_SL40       148.0  84.5     4079.0  3.34      265131.0        98038.0            91.2  -13245.0             -13.5      -13245.0
+4_ironfly_2pct_SL40         148.0  84.5     4687.0  3.87      304654.0       105322.0            97.6  -11324.0             -10.8      -11324.0
+5_ironfly_1.5pct_noSL       148.0  73.0     4630.0  2.26      300928.0        98038.0           103.5  -26523.0             -27.1      -15133.0
+6_ironcondor_0.5/1.5_SL50   148.0  68.2     1560.0  2.90      101410.0        96289.0            35.5  -12650.0             -13.1      -11688.0
+
+Rs per lot by year [naive]:
+      1_naked_straddle_SL40  2_ironfly_1pct_SL40  3_ironfly_1.5pct_SL40  4_ironfly_2pct_SL40  5_ironfly_1.5pct_noSL  6_ironcondor_0.5/1.5_SL50
+year                                                                                                                                          
+2023                31624.0              19537.0                26404.0              28408.0                24235.0                    11381.0
+2024               114694.0              56084.0                73859.0              91656.0                66927.0                    27256.0
+2025               104247.0              52597.0                83739.0              86590.0               133606.0                    30444.0
+2026               121844.0              56843.0                81129.0              98000.0                76160.0                    32329.0
+
+=== [realistic] intraday_share=0.59 iv_shock=6.0  (148 expiry days, 3.0 yrs) ===
+                           trades  win%  total_pts    PF  total_Rs_lot  avg_margin_Rs  yearly_return%  maxDD_Rs  maxDD%_of_margin  worst_day_Rs
+1_naked_straddle_SL40       148.0  66.9     1000.0  1.39       65005.0       293876.0             7.5  -13353.0              -4.5       -6339.0
+2_ironfly_1pct_SL40         148.0  66.2      620.0  1.22       40288.0        92941.0            14.6  -23252.0             -25.0      -11362.0
+3_ironfly_1.5pct_SL40       148.0  66.9      401.0  1.15       26081.0       100078.0             8.8  -17712.0             -17.7       -8759.0
+4_ironfly_2pct_SL40         148.0  66.2      334.0  1.12       21730.0       107667.0             6.8  -17290.0             -16.1       -7625.0
+5_ironfly_1.5pct_noSL       148.0  66.9      223.0  1.04       14482.0       100078.0             4.9  -71860.0             -71.8      -17501.0
+6_ironcondor_0.5/1.5_SL50   148.0  41.2     -447.0  0.67      -29043.0        97846.0           -10.0  -30435.0             -31.1       -6896.0
+
+Rs per lot by year [realistic]:
+      1_naked_straddle_SL40  2_ironfly_1pct_SL40  3_ironfly_1.5pct_SL40  4_ironfly_2pct_SL40  5_ironfly_1.5pct_noSL  6_ironcondor_0.5/1.5_SL50
+year                                                                                                                                          
+2023                 4139.0              -1123.0                 1043.0               1479.0                 8092.0                    -3615.0
+2024                 8986.0               8886.0                -7370.0              -5710.0               -30557.0                   -24888.0
+2025                34353.0              31262.0                31684.0              21768.0                35892.0                     8193.0
+2026                17526.0               1262.0                  725.0               4193.0                 1054.0                    -8734.0
+
+=== [harsh] intraday_share=0.59 iv_shock=12.0  (148 expiry days, 3.0 yrs) ===
+                           trades  win%  total_pts    PF  total_Rs_lot  avg_margin_Rs  yearly_return%  maxDD_Rs  maxDD%_of_margin  worst_day_Rs
+1_naked_straddle_SL40       148.0  66.2      895.0  1.35       58154.0       293876.0             6.7  -13356.0              -4.5       -6339.0
+2_ironfly_1pct_SL40         148.0  66.2      527.0  1.18       34252.0        92941.0            12.4  -26062.0             -28.0      -11350.0
+3_ironfly_1.5pct_SL40       148.0  66.2      308.0  1.11       20006.0       100078.0             6.7  -18864.0             -18.8       -8759.0
+4_ironfly_2pct_SL40         148.0  65.5      234.0  1.08       15191.0       107667.0             4.8  -17293.0             -16.1       -7625.0
+5_ironfly_1.5pct_noSL       148.0  66.9      229.0  1.05       14853.0       100078.0             5.0  -71534.0             -71.5      -17423.0
+6_ironcondor_0.5/1.5_SL50   148.0  40.5     -501.0  0.63      -32577.0        97846.0           -11.2  -34037.0             -34.8       -6896.0
+
+Rs per lot by year [harsh]:
+      1_naked_straddle_SL40  2_ironfly_1pct_SL40  3_ironfly_1.5pct_SL40  4_ironfly_2pct_SL40  5_ironfly_1.5pct_noSL  6_ironcondor_0.5/1.5_SL50
+year                                                                                                                                          
+2023                  393.0              -4822.0                -2701.0              -2266.0                 8074.0                    -3616.0
+2024                 8930.0               9268.0                -7050.0              -5696.0               -30337.0                   -26701.0
+2025                34304.0              31323.0                31754.0              21938.0                35901.0                     6299.0
+2026                14526.0              -1516.0                -1997.0               1215.0                 1216.0                    -8560.0
