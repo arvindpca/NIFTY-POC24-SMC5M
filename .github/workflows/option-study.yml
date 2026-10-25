@@ -5,6 +5,7 @@ on:
     branches: [nifty-option-study]
     paths:
       - "app/option_study.py"
+      - "app/option_expiry_hedge.py"
       - ".github/workflows/option-study.yml"
   workflow_dispatch:
     inputs:
@@ -47,7 +48,7 @@ jobs:
           ANGEL_PIN: ${{ secrets.ANGEL_PIN }}
           ANGEL_TOTP_SECRET: ${{ secrets.ANGEL_TOTP_SECRET }}
           PYTHONUNBUFFERED: "1"
-        run: python -u -m app.option_study
+        run: python -u -m app.option_study && python -u -m app.option_expiry_hedge
       - name: Commit results to this branch
         if: always()
         run: |
