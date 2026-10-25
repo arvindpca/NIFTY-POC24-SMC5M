@@ -1,0 +1,61 @@
+name: NIFTY Option Strategy Study (research, no orders)
+
+on:
+  push:
+    branches: [nifty-option-study]
+    paths:
+      - "app/option_study.py"
+      - ".github/workflows/option-study.yml"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Calendar days of NIFTY 5m history"
+        default: "1100"
+      cost_pts:
+        description: "Cost per leg round-trip (points)"
+        default: "2.0"
+
+permissions:
+  contents: write
+
+# Shares the Angel login with other research jobs: never run two at once.
+concurrency:
+  group: backtest-research
+  cancel-in-progress: false
+
+jobs:
+  study:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+      - name: Run option study
+        env:
+          PAPER_ONLY: "true"
+          OPT_STUDY_DAYS: ${{ inputs.days || '1100' }}
+          OPT_COST_PTS: ${{ inputs.cost_pts || '2.0' }}
+          SMARTAPI_MIN_CALL_GAP_SEC: "0.6"
+          SMARTAPI_MAX_RETRIES: "3"
+          SMARTAPI_BACKOFF_BASE_SEC: "10"
+          ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
+          ANGEL_CLIENT_CODE: ${{ secrets.ANGEL_CLIENT_CODE }}
+          ANGEL_PIN: ${{ secrets.ANGEL_PIN }}
+          ANGEL_TOTP_SECRET: ${{ secrets.ANGEL_TOTP_SECRET }}
+          PYTHONUNBUFFERED: "1"
+        run: python -u -m app.option_study
+      - name: Commit results to this branch
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add option_study_results 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -q -m "chore: option study results"
+            git pull -q --rebase origin "${GITHUB_REF_NAME}" || true
+            git push -q origin "HEAD:${GITHUB_REF_NAME}" || true
+          fi
