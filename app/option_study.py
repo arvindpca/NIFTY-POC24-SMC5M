@@ -41,7 +41,19 @@ def _ncdf(x):
     return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
 
+# Pricing model knobs (set per run in main):
+#   intraday_share: fraction of a day's variance (= theta) that is earned during market hours. 1.0 = naive
+#                   model (all decay happens 09:15-15:30). Real markets price part of each day's decay for
+#                   the overnight gap, so an intraday seller only collects this share. Measured from data.
+#   iv_shock:       IV rises when NIFTY moves away from the 09:20 price: iv * (1 + iv_shock * |move|).
+#                   e.g. 6 -> a 1% move lifts IV by 6% (14 -> 14.84). 0 = constant IV (naive).
+MODEL = {"intraday_share": 1.0, "iv_shock": 0.0}
+DAY = {"spot0": None}
+
+
 def bs(spot, strike, t_years, iv, kind):
+    if DAY["spot0"] and MODEL["iv_shock"]:
+        iv = iv * (1.0 + MODEL["iv_shock"] * abs(spot / DAY["spot0"] - 1.0))
     if t_years <= 1e-6 or iv <= 0:
         return max(0.0, spot - strike) if kind == "C" else max(0.0, strike - spot)
     sq = iv * math.sqrt(t_years)
@@ -70,7 +82,7 @@ def weekdays_between(a, b):
 def t_years(d, clock):
     """Trading-time to expiry close (15:30) from intraday clock on day d."""
     mins_left = max(0.0, (15 * 60 + 30) - (clock.hour * 60 + clock.minute))
-    return (weekdays_between(d, expiry_for(d)) + mins_left / 375.0) / 252.0
+    return (weekdays_between(d, expiry_for(d)) + MODEL["intraday_share"] * mins_left / 375.0) / 252.0
 
 
 def atm(spot):
@@ -274,11 +286,17 @@ def stats(s):
             "best_day": round(s.max(), 1)}
 
 
-def main():
-    OUT.mkdir(exist_ok=True)
-    vix = fetch_vix()
-    nifty, src = load_nifty()
-    vix_prev = vix.shift(1)
+def intraday_share(nifty):
+    """Share of daily variance that happens during market hours (vs the overnight gap), from the data."""
+    d = nifty.groupby("date").agg(o=("open", "first"), c=("close", "last"))
+    intra = np.log(d.c / d.o)
+    gap = np.log(d.o / d.c.shift(1))
+    both = pd.concat([intra, gap], axis=1).dropna()
+    vi, vg = (both.iloc[:, 0] ** 2).mean(), (both.iloc[:, 1] ** 2).mean()
+    return float(vi / (vi + vg))
+
+
+def run_mode(label, nifty, vix_prev, src):
     rows = []
     for day, bars in nifty.groupby("date"):
         bars = bars.reset_index(drop=True)
@@ -288,6 +306,7 @@ def main():
         if prev.empty or pd.isna(prev.iloc[-1]):
             continue
         iv = float(prev.iloc[-1]) / 100.0
+        DAY["spot0"] = float(bars.close.iloc[0])
         row = {"date": day, "weekday": day.strftime("%a"), "dte": weekdays_between(day, expiry_for(day)),
                "iv": round(iv * 100, 2), "open": bars.open.iloc[0], "close": bars.close.iloc[-1],
                "range_pct": round(100 * (bars.high.max() - bars.low.min()) / bars.open.iloc[0], 2)}
@@ -296,12 +315,14 @@ def main():
             row[name] = None if pnl is None else round(pnl, 2)
             row[name + "_prem"] = round(prem, 1)
         rows.append(row)
+    DAY["spot0"] = None
     df = pd.DataFrame(rows)
-    df.to_csv(OUT / "daily_pnl.csv", index=False)
+    df.to_csv(OUT / f"daily_pnl_{label}.csv", index=False)
 
-    lines = [f"NIFTY weekly option strategy study  (generated {datetime.now():%Y-%m-%d %H:%M} UTC)",
+    lines = [f"NIFTY weekly option strategy study [{label}]  (generated {datetime.now():%Y-%m-%d %H:%M} UTC)",
              f"Data: {src}; {df.date.min()} -> {df.date.max()}; {len(df)} trading days",
-             f"Option prices: Black-Scholes, IV = previous-day India VIX. Cost {COST_PTS} pts per leg round-trip.",
+             f"Option prices: Black-Scholes, IV = previous-day India VIX; intraday_share={MODEL['intraday_share']:.2f}, "
+             f"iv_shock={MODEL['iv_shock']}. Cost {COST_PTS} pts per leg round-trip.",
              f"Rs figures = points x lot size {LOT}. Research only, not advice.", ""]
     names = list(STRATEGIES)
     table = pd.DataFrame({n: stats(df[n]) for n in names}).T
@@ -327,7 +348,33 @@ def main():
     lines += ["=== Sanity: average 09:20 ATM straddle premium (model) by days-to-expiry ===",
               df.groupby("dte")["A_straddle_920_SL25_prem"].agg(["count", "mean"]).round(1).to_string(), ""]
     text = "\n".join(lines)
-    (OUT / "summary.txt").write_text(text)
+    (OUT / f"summary_{label}.txt").write_text(text)
+    print(text, flush=True)
+    return table
+
+
+def main():
+    OUT.mkdir(exist_ok=True)
+    vix = fetch_vix()
+    nifty, src = load_nifty()
+    vix_prev = vix.shift(1)
+    share = intraday_share(nifty)
+    print(f"Measured intraday share of daily variance: {share:.2f}", flush=True)
+    modes = {
+        "naive": {"intraday_share": 1.0, "iv_shock": 0.0},
+        "realistic": {"intraday_share": share, "iv_shock": float(os.getenv("OPT_IV_SHOCK", "6"))},
+        "harsh": {"intraday_share": share, "iv_shock": 12.0},
+    }
+    tables = {}
+    for label, cfg in modes.items():
+        MODEL.update(cfg)
+        tables[label] = run_mode(label, nifty, vix_prev, src)
+    cmp_lines = [f"Measured intraday share of variance = {share:.2f}", "",
+                 "Total points (3 yrs) / profit factor / max drawdown points, by pricing model:"]
+    cmp = pd.concat({k: t[["total_pts", "PF", "win%", "maxDD_pts"]] for k, t in tables.items()}, axis=1)
+    cmp_lines.append(cmp.to_string())
+    text = "\n".join(cmp_lines)
+    (OUT / "compare_models.txt").write_text(text)
     print(text)
 
 
