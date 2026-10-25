@@ -1,0 +1,52 @@
+NIFTY weekly option strategy study [harsh]  (generated 2026-10-25 20:04 UTC)
+Data: Angel SmartAPI 5m; 2023-10-23 -> 2026-10-23; 740 trading days
+Option prices: Black-Scholes, IV = previous-day India VIX; intraday_share=0.59, iv_shock=12.0. Cost 2.0 pts per leg round-trip.
+Rs figures = points x lot size 65. Research only, not advice.
+
+=== Overall ===
+                         days  win%  total_pts  avg_pts    PF  maxDD_pts  worst_day  best_day  total_Rs_per_lot  maxDD_Rs_per_lot
+A_straddle_920_SL25     740.0  53.9    -2514.6    -3.40  0.83    -3503.9     -125.5     130.3         -163449.0         -227754.0
+B_straddle_920_SL40     740.0  56.6    -3215.5    -4.35  0.76    -3945.1     -198.4     102.6         -209008.0         -256432.0
+C_strangle_1pct_SL50    740.0  41.1    -4844.2    -6.55  0.39    -4908.0     -142.2      43.4         -314873.0         -319020.0
+D_ironfly_wings1.25pct  740.0  30.9    -4868.0    -6.58  0.55    -4857.9     -228.4     113.1         -316420.0         -315764.0
+E_ironfly_combinedSL30  740.0  29.2    -4017.2    -5.43  0.57    -3996.2     -117.8     113.1         -261118.0         -259753.0
+F_ORB15_buy_SL30_T60    723.0  37.9    -1183.1    -1.64  0.92    -2450.6      -86.2     166.2          -76902.0         -159289.0
+
+=== Consistency: first half (< 2025-04-28) vs second half ===
+A_straddle_920_SL25        H1 total=-533.0 PF=0.92 | H2 total=-1981.6 PF=0.74
+B_straddle_920_SL40        H1 total=-1719.7 PF=0.75 | H2 total=-1495.7 PF=0.77
+C_strangle_1pct_SL50       H1 total=-2275.1 PF=0.41 | H2 total=-2569.0 PF=0.36
+D_ironfly_wings1.25pct     H1 total=-3056.0 PF=0.5 | H2 total=-1811.9 PF=0.61
+E_ironfly_combinedSL30     H1 total=-2177.4 PF=0.56 | H2 total=-1839.8 PF=0.59
+F_ORB15_buy_SL30_T60       H1 total=106.4 PF=1.01 | H2 total=-1289.5 PF=0.83
+
+=== Total points by year ===
+      A_straddle_920_SL25  B_straddle_920_SL40  C_strangle_1pct_SL50  D_ironfly_wings1.25pct  E_ironfly_combinedSL30  F_ORB15_buy_SL30_T60
+year                                                                                                                                      
+2023                137.0                 84.0                 -56.0                  -231.0                  -172.0                -278.0
+2024               -135.0              -1215.0               -1564.0                 -2398.0                 -1769.0                 813.0
+2025               -763.0               -647.0               -1481.0                  -729.0                  -732.0                -761.0
+2026              -1754.0              -1437.0               -1742.0                 -1509.0                 -1345.0                -958.0
+
+=== Avg points/day: expiry day vs other days ===
+            A_straddle_920_SL25  B_straddle_920_SL40  C_strangle_1pct_SL50  D_ironfly_wings1.25pct  E_ironfly_combinedSL30  F_ORB15_buy_SL30_T60
+expiry_day                                                                                                                                      
+False                     -5.97                -6.94                 -7.47                   -8.68                   -8.71                 -0.36
+True                       6.90                 6.05                 -2.87                    1.83                    7.71                 -6.74
+
+=== Avg points/day by previous-day VIX ===
+            A_straddle_920_SL25  B_straddle_920_SL40  C_strangle_1pct_SL50  D_ironfly_wings1.25pct  E_ironfly_combinedSL30  F_ORB15_buy_SL30_T60
+vix_bucket                                                                                                                                      
+<12                        2.43                 1.94                 -2.89                   -4.64                   -5.52                  1.21
+12-15                     -6.30                -5.04                 -7.16                   -8.14                   -6.08                 -3.39
+15-20                     -5.06                -9.59                 -9.34                   -3.49                   -1.81                 -2.10
+>20                        2.91                -4.58                 -5.95                  -14.43                  -14.41                  2.85
+
+=== Sanity: average 09:20 ATM straddle premium (model) by days-to-expiry ===
+     count   mean
+dte              
+0      148  128.9
+1      147  214.6
+2      152  273.7
+3      144  316.9
+4      149  361.8

@@ -1,0 +1,11 @@
+Measured intraday share of variance = 0.59
+
+Total points (3 yrs) / profit factor / max drawdown points, by pricing model:
+                           naive                       realistic                           harsh                      
+                       total_pts    PF  win% maxDD_pts total_pts    PF  win% maxDD_pts total_pts    PF  win% maxDD_pts
+A_straddle_920_SL25      14167.4  2.42  72.7    -557.1     585.3  1.04  58.8   -1618.7   -2514.6  0.83  53.9   -3503.9
+B_straddle_920_SL40      18928.4  4.20  82.3    -307.6     669.6  1.06  64.2   -1250.7   -3215.5  0.76  56.6   -3945.1
+C_strangle_1pct_SL50      9863.4  4.71  79.5    -171.5   -1983.4  0.68  50.1   -2295.4   -4844.2  0.39  41.1   -4908.0
+D_ironfly_wings1.25pct    3848.2  1.57  56.6    -526.6   -4099.6  0.60  33.5   -4114.7   -4868.0  0.55  30.9   -4857.9
+E_ironfly_combinedSL30    4585.5  1.80  55.7    -391.5   -3154.4  0.64  31.9   -3131.4   -4017.2  0.57  29.2   -3996.2
+F_ORB15_buy_SL30_T60     -6213.4  0.65  30.7   -6613.0   -1844.2  0.88  37.1   -2834.5   -1183.1  0.92  37.9   -2450.6
