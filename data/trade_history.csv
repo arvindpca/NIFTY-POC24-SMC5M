@@ -1,1 +1,2 @@
 trade_id,symbol,side,signal_time,entry_time,entry_price,quantity,notional,stop_loss,target,exit_time,exit_price,exit_reason,gross_pnl,result,nifty_trend,stock_poc,setup,estimated_cost,net_pnl
+SB-20261029-1315-AXISBANK-D161BA,AXISBANK,LONG,2026-10-29T13:15:00+05:30,2026-10-29T13:15:00+05:30,1221.5,40,48860.0,1211.6347,1236.2979,2026-10-29T15:00:00+05:30,1224.699951171875,TIME_EXIT,128.0,WIN,POSITIVE,1204.9348871295367,Sweep>Displacement>=1ATR>MSS>FVG_OR_OB>Retest>Confirmation,0.0,128.0
