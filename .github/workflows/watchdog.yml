@@ -10,7 +10,7 @@ on:
 
 permissions:
   contents: read
-  actions: read
+  actions: write   # chup bot ko khud restart karne ke liye
 
 concurrency:
   group: watchdog

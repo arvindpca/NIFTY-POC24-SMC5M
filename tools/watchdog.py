@@ -43,6 +43,21 @@ def gh(path: str) -> dict:
         return json.loads(r.read().decode())
 
 
+def restart(wf: str) -> bool:
+    """Chup bot ko khud chalu karo (workflow_dispatch). True = GitHub ne maan liya."""
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{REPO}/actions/workflows/{wf}/dispatches",
+        data=json.dumps({"ref": "main"}).encode(), method="POST",
+        headers={"Authorization": f"Bearer {TOKEN}", "Accept": "application/vnd.github+json",
+                 "User-Agent": "watchdog", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.status in (200, 204)
+    except Exception as e:  # noqa: BLE001
+        print("restart failed:", wf, e)
+        return False
+
+
 def parse_ts(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
@@ -158,12 +173,17 @@ def check_interval(rule: dict, state: dict, now: datetime) -> str | None:
     if age is not None and age <= gap:
         state["stale"].pop(wf, None)
         return None
+    # Pehle khud restart karo (har baar), alert sirf 2 ghante me ek baar
+    restarted = restart(wf) if rule.get("auto_restart") else False
+    print(f"{wf} silent; auto-restart {'OK' if restarted else 'not done'}")
     if not should_repeat(state, wf, now):
         return None
     when = last.astimezone(IST).strftime("%d-%b %H:%M IST") if last else "kabhi nahi"
     extra = "\n(Agar aaj market holiday hai to ignore karo)" if rule.get("window") == "market" else ""
+    fix = ("\n🔄 Watchdog ne bot ko khud restart kar diya hai. Kuch karna nahi hai."
+           if restarted else "")
     return (f"🕐 BOT CHUP HAI: {rule.get('label', wf)}\n"
-            f"Pichhle {gap} min me koi run nahi hua. Aakhri run: {when}\n"
+            f"Pichhle {gap} min me koi run nahi hua. Aakhri run: {when}{fix}\n"
             f"Dekho: {link}{extra}")
 
 

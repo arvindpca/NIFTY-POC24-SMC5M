@@ -4,7 +4,8 @@
    "wf": "paper-trading.yml",
    "gap_min": 45,
    "window": "market",
-   "label": "Strategy B Paper Trading"
+   "label": "Strategy B Paper Trading",
+   "auto_restart": true
   }
  ]
 }
