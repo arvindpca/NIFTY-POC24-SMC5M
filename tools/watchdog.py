@@ -43,21 +43,6 @@ def gh(path: str) -> dict:
         return json.loads(r.read().decode())
 
 
-def restart(wf: str) -> bool:
-    """Chup bot ko khud chalu karo (workflow_dispatch). True = GitHub ne maan liya."""
-    req = urllib.request.Request(
-        f"https://api.github.com/repos/{REPO}/actions/workflows/{wf}/dispatches",
-        data=json.dumps({"ref": "main"}).encode(), method="POST",
-        headers={"Authorization": f"Bearer {TOKEN}", "Accept": "application/vnd.github+json",
-                 "User-Agent": "watchdog", "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return r.status in (200, 204)
-    except Exception as e:  # noqa: BLE001
-        print("restart failed:", wf, e)
-        return False
-
-
 def parse_ts(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
@@ -73,6 +58,14 @@ def ist_at(day: datetime, s: str) -> datetime:
 
 
 def send_telegram(text: str) -> bool:
+    for attempt in range(3):
+        if _send_once(text):
+            return True
+        time.sleep(5 * (attempt + 1))
+    return False
+
+
+def _send_once(text: str) -> bool:
     tok, chat = os.getenv("TELEGRAM_BOT_TOKEN", "").strip(), os.getenv("TELEGRAM_CHAT_ID", "").strip()
     if not tok or not chat:
         print("Telegram secrets missing")
@@ -83,7 +76,10 @@ def send_telegram(text: str) -> bool:
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
             return r.status == 200
-    except Exception as e:  # never print the URL (has the token)
+    except urllib.error.HTTPError as e:  # never print the URL (has the token)
+        print(f"Telegram send failed: HTTP {e.code} {e.read()[:200]!r}")
+        return False
+    except Exception as e:
         print(f"Telegram send failed: {type(e).__name__}")
         return False
 
@@ -173,17 +169,12 @@ def check_interval(rule: dict, state: dict, now: datetime) -> str | None:
     if age is not None and age <= gap:
         state["stale"].pop(wf, None)
         return None
-    # Pehle khud restart karo (har baar), alert sirf 2 ghante me ek baar
-    restarted = restart(wf) if rule.get("auto_restart") else False
-    print(f"{wf} silent; auto-restart {'OK' if restarted else 'not done'}")
     if not should_repeat(state, wf, now):
         return None
     when = last.astimezone(IST).strftime("%d-%b %H:%M IST") if last else "kabhi nahi"
     extra = "\n(Agar aaj market holiday hai to ignore karo)" if rule.get("window") == "market" else ""
-    fix = ("\n🔄 Watchdog ne bot ko khud restart kar diya hai. Kuch karna nahi hai."
-           if restarted else "")
     return (f"🕐 BOT CHUP HAI: {rule.get('label', wf)}\n"
-            f"Pichhle {gap} min me koi run nahi hua. Aakhri run: {when}{fix}\n"
+            f"Pichhle {gap} min me koi run nahi hua. Aakhri run: {when}\n"
             f"Dekho: {link}{extra}")
 
 
@@ -214,6 +205,7 @@ def check_daily(rule: dict, state: dict, now: datetime) -> str | None:
 def main() -> int:
     now = datetime.now(timezone.utc)
     state = load_state()
+    before = json.loads(json.dumps(state))  # alert na jaye to yaad rakho ki bhejna baaki hai
     cfg = json.loads(CONFIG_PATH.read_text()) if CONFIG_PATH.exists() else {}
     msgs: list[str] = []
     try:
@@ -242,9 +234,11 @@ def main() -> int:
         print(m.replace("\n", " | "))
     if msgs:
         text = f"⚠️ WATCHDOG - {REPO_NAME}\n\n" + "\n\n".join(msgs)
+        if len(text) > 3900:
+            text = text[:3900] + "\n... (aur bhi - GitHub Actions dekho)"
         if not send_telegram(text):
-            save_state(state)
-            print("::error::Telegram alert nahi gaya")
+            save_state(before)  # agle run me dobara try hoga
+            print("::error::Telegram alert nahi gaya (agle run me dobara try hoga)")
             return 1
     else:
         print("Sab bots theek chal rahe hain ✅")
