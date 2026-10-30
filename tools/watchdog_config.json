@@ -6,6 +6,13 @@
    "window": "market",
    "label": "Strategy B Paper Trading",
    "auto_restart": true
+  },
+  {
+   "wf": "keeper.yml",
+   "gap_min": 30,
+   "window": "always",
+   "label": "Keeper (paper bot rakhwala)",
+   "auto_restart": true
   }
  ]
 }

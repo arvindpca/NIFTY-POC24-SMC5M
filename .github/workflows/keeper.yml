@@ -1,0 +1,35 @@
+name: Keeper (paper bot ko zinda rakhe)
+
+# Lagataar chalta hai: har 5 min paper-trading check, ruka to khud restart.
+# Har run ~5h40m ke baad apna agla run khud start karta hai (cron ki zaroorat nahi).
+# Cron sirf backup hai - agar chain kabhi toot jaye to 20 min me wapas jod de.
+# Repo public hai, isliye Actions minutes muft hain.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11,31,51 * * * *"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: keeper
+  cancel-in-progress: false   # chalta keeper kabhi nahi rukta; naya line me wait karta hai
+
+jobs:
+  keep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools
+      - name: Keep paper bot alive
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PYTHONUNBUFFERED: "1"
+        run: python3 tools/keeper.py
